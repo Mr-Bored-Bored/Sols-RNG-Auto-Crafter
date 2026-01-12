@@ -380,7 +380,7 @@ class Auto_Crafter(QMainWindow):
                 pyautogui.scroll(2000)
                 print("Scrolled up:")
                 time.sleep(0.01)
-                img = ImageGrab.grab(tuple(config["positions"][button_to_check]["bbox"]))
+                img = ImageGrab.grab(config["positions"][button_to_check]["bbox"])
                 print("Button image captured")
             elif int(button_to_check[-1]) >= 4:
                 print("Button is 4 or greater:")
@@ -395,7 +395,7 @@ class Auto_Crafter(QMainWindow):
                     pyautogui.scroll(-46)
                     print("Scrolled down to button: ", x + 1)
                 time.sleep(0.01)
-                img = ImageGrab.grab(tuple(config["positions"]["add button 4"]["bbox"]))
+                img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 print(button_to_check, "image captured")
             for t in reader.readtext(np.array(img), detail=0):
                 print(f"Detected text for {button_to_check}:", t)
@@ -454,9 +454,6 @@ class Auto_Crafter(QMainWindow):
                     if len(auto_add_waitlist) > 0:
                         item = auto_add_waitlist[0]
                         mkey.left_click_xy_natural(*config["positions"]["search bar"])
-                        pyautogui.hotkey('ctrl', 'a')
-                        pyautogui.press('backspace')
-                        keyboard.Controller().type(config["item_presets"][item]["name to search"])
                         mkey.move_to_natural(*config["positions"]["potion selection button"])
                         pyautogui.scroll(2000)
                         time.sleep(slowdown)
@@ -472,7 +469,6 @@ class Auto_Crafter(QMainWindow):
         
     def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
         template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
-        add_start_index = None
         data = {"img_scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position_name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
                                "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["auto add button"]},
                                "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["craft button"]},
