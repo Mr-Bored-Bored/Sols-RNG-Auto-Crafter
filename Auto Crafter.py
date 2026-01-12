@@ -103,10 +103,6 @@ class Auto_Crafter(QMainWindow):
         self.find_potion_selection_button = QPushButton("Find Potion Selection Button")
         # Semi Auto Calibration mode
         self.set_add_button_template = QPushButton("Set Add Button Template")
-        self.set_auto_add_button_template = QPushButton("Set Auto Add Button Template")
-        self.set_craft_button_template = QPushButton("Set Craft Button Template")
-        self.set_search_bar_template = QPushButton("Set Search Bar Template")
-        self.set_potion_selection_button_template = QPushButton("Set Potion Selection Button Template")
         # Manual Calibration mode
         self.set_add_button_1_coordinates = QPushButton("Set Add Button 1 Coordinates")
         self.set_add_button_2_coordinates = QPushButton("Set Add Button 2 Coordinates")
@@ -140,11 +136,10 @@ class Auto_Crafter(QMainWindow):
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_tab_vbox.addLayout(main_tab_hbox)
         self.main_tab.setLayout(main_tab_vbox)
-
         # Set Calibrations Tab Layout
         self.calibrations_tab_main_vbox = QVBoxLayout()
         self.calibrations_stack = QStackedWidget()
-
+        # Auto Calibration Page
         auto_calibration_page = QWidget()
         auto_layout = QVBoxLayout(auto_calibration_page)
         auto_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -153,16 +148,12 @@ class Auto_Crafter(QMainWindow):
         auto_layout.addWidget(self.find_craft_button)
         auto_layout.addWidget(self.find_search_bar)
         auto_layout.addWidget(self.find_potion_selection_button)
-
+        # Semi Auto Calibration Page
         semi_auto_calibration_page = QWidget()
         semi_auto_layout = QVBoxLayout(semi_auto_calibration_page)
         semi_auto_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         semi_auto_layout.addWidget(self.set_add_button_template)
-        semi_auto_layout.addWidget(self.set_auto_add_button_template)
-        semi_auto_layout.addWidget(self.set_craft_button_template)
-        semi_auto_layout.addWidget(self.set_search_bar_template)
-        semi_auto_layout.addWidget(self.set_potion_selection_button_template)
-
+        # Manual Calibration Page
         manual_calibration_page = QWidget()
         manual_layout = QVBoxLayout(manual_calibration_page)
         manual_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -174,7 +165,7 @@ class Auto_Crafter(QMainWindow):
         manual_layout.addWidget(self.set_craft_button_coordinates)
         manual_layout.addWidget(self.set_search_bar_coordinates)
         manual_layout.addWidget(self.set_potion_selection_button_coordinates)
-
+        # Add comments
         self.calibrations_stack.addWidget(auto_calibration_page)       # index 0
         self.calibrations_stack.addWidget(semi_auto_calibration_page)  # index 1
         self.calibrations_stack.addWidget(manual_calibration_page)     # index 2
@@ -446,7 +437,6 @@ class Auto_Crafter(QMainWindow):
         
     def auto_find_image(self, template, save=False, multiple=False):
         template_path = f"{current_directory}\\{template}"
-        add_start_index = False
         data = {"img_scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position_name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
                                "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["auto add button"]},
                                "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["craft button"]},
@@ -492,10 +482,11 @@ class Auto_Crafter(QMainWindow):
 
         def find_template():
             nonlocal add_start_index
-            global count
             count = 0
             screen = ImageGrab.grab()
+            single_match_screen = screen.copy()
             all_matches_screen = screen.copy()
+            bbox, center = None, None
 
             print("Finding all matches of template...")
         
@@ -516,16 +507,33 @@ class Auto_Crafter(QMainWindow):
                     print ("Searching for multiple matches...")
                     matches = list(pyautogui.locateAllOnScreen(template_scaled, confidence=.75))
                     sorted_matches = sorted(matches, key=lambda box: (box.top))
-                    for count, match in enumerate(sorted_matches):
+
+                    def multi_image_template_find(match):
+                        nonlocal single_match_screen, bbox, center
                         bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))
                         center = (int(match.left + match.width // 2), int(match.top + match.height // 2))
                         print(f"  bbox : {bbox}, center: {center}")
                         single_match_screen = screen.copy()
                         ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
                         ImageDraw.Draw(single_match_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
-                        single_match_screen.show()
-                        save_position(data["img_scales"][template]["position_name"][count], bbox, center)
-                
+                        
+                    if add_start_index == None:
+                        for count, match in enumerate(sorted_matches):
+                            print("1st to 3rd button logic")
+                            print(count)
+                            multi_image_template_find(match)
+                            single_match_screen.show()
+                            save_position(data["img_scales"][template]["position_name"][count], bbox, center)
+                            
+                    elif add_start_index != None:
+                        for count, match in enumerate(sorted_matches, start=add_start_index[0]):
+                            print("4th button and up logic")
+                            print(count)
+                            multi_image_template_find(match)
+                            if count in add_start_index[1]:
+                                single_match_screen.show()
+                                save_position(data["img_scales"][template]["position_name"][count], bbox, center)
+                    
             except (pyscreeze_ImageNotFoundException, pyautogui.ImageNotFoundException):
                 print(f"No matches found for template: {template_path}")
                 screen.show()
@@ -536,13 +544,20 @@ class Auto_Crafter(QMainWindow):
             count = 0
 
         if template == "add button.png":
-            what_add_buttons = QMessageBox.information(self, "Add Button Selector", "Are the add button(s) 1-3(Yes) or 4(No)", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            add_start_index = (what_add_buttons == QMessageBox.StandardButton.No)
+            what_add_buttons = QMessageBox(self)
+            what_add_buttons.setWindowTitle("Add Button Selector")
+            what_add_buttons.setText("Are the add button(s) 1–3 or 4?")
+            btn_1_3 = what_add_buttons.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
+            btn_4  = what_add_buttons.addButton("4",   QMessageBox.ButtonRole.AcceptRole)
+            what_add_buttons.exec()
 
+            if what_add_buttons.clickedButton() == btn_4:
+                add_start_index = 1, (3,)
+            else :
+                add_start_index = None
         template_scaled = rescale_template(template)
         find_template()
         
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     loader = loading_screen()
