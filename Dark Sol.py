@@ -26,6 +26,8 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 # 1. new auto add button checking logic
 # 2. additional items to add check failure logic)
 # 6. Make auto add checks ignore manual click slots (lucky potions)
+# 7. Improve logs
+# 8. Fix scrolling with add buttons past 4
 
 # Loading Screen
 class loading_thread(QThread):
@@ -193,7 +195,7 @@ class Auto_Crafter(QMainWindow):
         self.mini_status_qv.addWidget(self.mini_status_label)
         self.mini_status_label.adjustSize()
         self.mini_status_widget.adjustSize()
-        self.mini_status_widget.move(1200, 75)
+        self.mini_status_widget.move(600, 75)
         # Set Ui Theme
         self.setStyleSheet("""
             QMainWindow {background-color: black; }
@@ -367,7 +369,7 @@ class Auto_Crafter(QMainWindow):
             time.sleep(slowdown)
             if int(button_to_add_to[-1]) < 4:
                 mkey.move_to_natural(*config["positions"][button_to_add_to]["center"])
-                self.log("Moved to button center:")
+                self.log("Moved to", button_to_add_to, "center")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up:")
@@ -375,28 +377,28 @@ class Auto_Crafter(QMainWindow):
                 mkey.left_click()
             elif int(button_to_add_to[-1]) >= 4:
                 mkey.move_to_natural(*config["positions"]["add button 4"]["center"])
-                self.log("Moved to add button 4 center:")
+                self.log("Moved to add button ((4)) center:")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up:")
                 time.sleep(slowdown)
                 pyautogui.scroll(-18)
-                self.log("Scrolled down to button 4")
+                self.log("Scrolled down to slot 4")
                 time.sleep(slowdown)
                 for x in range(4, int(button_to_add_to[-1])):
                     pyautogui.scroll(-40)
                     time.sleep(slowdown)
-                    self.log("Scrolled down to button:", x + 1)
+                    self.log("Scrolled down to slot:", x + 1)
                 time.sleep(slowdown)
                 mkey.left_click()
-                self.log("Add button clicked")
+                self.log(f"{button_to_add_to} clicked")
 
         def check_button(button_to_check):
             img = None
             time.sleep(slowdown)
             if int(button_to_check[-1]) < 4:
                 mkey.move_to_natural(*config["positions"][f"amount box {int(button_to_check[-1])}"])
-                self.log("Moved to amount box:")
+                self.log(f"Moved to amount box {int(button_to_check[-1])}")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up:")
@@ -406,18 +408,18 @@ class Auto_Crafter(QMainWindow):
                 time.sleep(slowdown)
             elif int(button_to_check[-1]) >= 4:
                 mkey.move_to_natural(*config["positions"]["amount box 4"])
-                self.log("Moved to amount box 4:")
+                self.log("Moved to amount box ((4))")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up:")
                 time.sleep(slowdown)
                 pyautogui.scroll(-18)
-                self.log("Scrolled down to button 4:")
+                self.log("Scrolled down to slot 4:")
                 time.sleep(slowdown)
                 for x in range(4, int(button_to_check[-1])):
                     time.sleep(slowdown)
                     pyautogui.scroll(-40)
-                    self.log("Scrolled down to button:", x + 1)
+                    self.log("Scrolled down to slot:", x + 1)
                 time.sleep(slowdown)
                 img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 self.log(button_to_check, "image captured")
@@ -429,7 +431,7 @@ class Auto_Crafter(QMainWindow):
                 if not t == "":
                     self.log("Item not ready, 'Add' detected.")
                     return False
-            self.log("No 'Add' detected.")
+            self.log("No 'Add' detected. for", button_to_check)
             time.sleep(slowdown)
             return True
             
@@ -454,11 +456,9 @@ class Auto_Crafter(QMainWindow):
                 for button_to_add_to in config["item_presets"][item]["buttons to check"]:
                     add_to_button(button_to_add_to)
                     time.sleep(slowdown)
-                    self.log("Added to button:", button_to_add_to)
-                time.sleep(slowdown)
 
                 item_ready = True
-                self.log("Item set to ready")
+                self.log(f"{item} set to ready")
                 time.sleep(slowdown)
                 
                 for button_to_check in config["item_presets"][item]["buttons to check"]:
@@ -469,22 +469,16 @@ class Auto_Crafter(QMainWindow):
 
                 time.sleep(slowdown)
                 if item_ready:
-                    self.log("Item is ready, proceeding to craft.")
+                    self.log(f"{item} is ready, proceeding to craft.")
                     time.sleep(slowdown)
                     for button_to_click in config["item_presets"][item]["additional buttons to click"]:
-                        mkey.move_to_natural(*config["positions"][button_to_click]["center"])
-                        self.log("Moved to additional button center:", button_to_click)
-                        time.sleep(slowdown)
-                        pyautogui.scroll(2000)
-                        self.log("Scrolled up:")
-                        time.sleep(slowdown)
-                        mkey.left_click()
-                        self.log("Clicked additional button:", button_to_click)
+                        add_to_button(button_to_click)
                         time.sleep(slowdown)
 
                     if not config["item_presets"][item]["instant craft"]:
-                        if self.current_auto_add_potion == None and item not in self.auto_add_waitlist:
+                        if self.current_auto_add_potion == None:
                             mkey.left_click_xy_natural(*config["positions"]["auto add button"])
+                            self.current_auto_add_potion = item
                             self.log("Clicked auto add button")
                             time.sleep(slowdown)
                         elif not self.current_auto_add_potion == None and item not in self.auto_add_waitlist:
@@ -498,7 +492,7 @@ class Auto_Crafter(QMainWindow):
 
             elif item == self.current_auto_add_potion:
                 item_ready = True
-                self.log("Item set to ready (auto add):", item)
+                self.log(f"{item} set to ready")
                 time.sleep(slowdown)
                 for slot in range(1, config["item_presets"][item]["crafting slots"] + 1):  # ignore manual click slots
                     if not check_button("add button " + str(slot)):
@@ -508,26 +502,27 @@ class Auto_Crafter(QMainWindow):
 
                 if item_ready:
                     mkey.left_click_xy_natural(*config["positions"]["craft button"])
-                    self.log("Clicked craft button (auto add):", item)
+                    self.log("Clicked craft button")
                     time.sleep(slowdown)
                     if len(self.auto_add_waitlist) > 0:
                         mkey.left_click_xy_natural(*config["positions"]["search bar"])
-                        self.log("Search bar clicked for next potion")
+                        self.log("Search bar clicked")
                         time.sleep(slowdown)
+                        keyboard.Controller().type(self.auto_add_waitlist[0])
+                        self.log(f"Item searched: {self.auto_add_waitlist[0]}")
                         mkey.move_to_natural(*config["positions"]["potion selection button"])
-                        self.log("Moved to potion selection button for next potion:")
+                        self.log("Moved to potion selection button:")
                         time.sleep(slowdown)
                         pyautogui.scroll(2000)
                         self.log("Scrolled up:")
                         time.sleep(slowdown)
                         mkey.left_click()
-                        self.log("Selection button clicked for next potion")
+                        self.log("Selection button clicked")
                         time.sleep(slowdown)
                         mkey.left_click_xy_natural(*config["positions"]["auto add button"])
-                        self.log("Clicked auto add button for next potion")
+                        self.log("Clicked auto add button")
                         time.sleep(slowdown)
                         self.current_auto_add_potion = self.auto_add_waitlist.pop(0)
-                        self.log("Next potion from waitlist:", self.current_auto_add_potion)
                         time.sleep(slowdown)
 
         macro_loop_iteration("bound")
