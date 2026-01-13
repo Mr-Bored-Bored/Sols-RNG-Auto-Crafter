@@ -75,6 +75,7 @@ class loading_screen(QWidget):
 class Auto_Crafter(QMainWindow):
     start_macro_signal = pyqtSignal()
     stop_macro_signal = pyqtSignal()
+    test_signal = pyqtSignal()
 
     def __init__(self):
         # Create main window
@@ -95,7 +96,8 @@ class Auto_Crafter(QMainWindow):
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
         # Auto Calibration mode
-        self.find_add_button = QPushButton("Find Add Button")
+        self.find_add_button = QPushButton("Find Add Buttons")
+        self.find_amount_box = QPushButton("Find Amount Boxes")
         self.find_auto_add_button = QPushButton("Find Auto Add Button")
         self.find_craft_button = QPushButton("Find Craft Button")
         self.find_search_bar = QPushButton("Find Search Bar")
@@ -111,6 +113,9 @@ class Auto_Crafter(QMainWindow):
         self.set_craft_button_coordinates = QPushButton("Set Craft Button Coordinates")
         self.set_search_bar_coordinates = QPushButton("Set Search Bar Coordinates")
         self.set_potion_selection_button_coordinates = QPushButton("Set Potion Selection Button Coordinates")
+        #Status Label Setup
+        self.mini_status_widget = QWidget()
+        self.mini_status_label = QLabel("Stopped", self.mini_status_widget)
         # Create Running Variables
         self.macro_timer = QTimer(self)
         self.run_event = threading.Event()
@@ -124,7 +129,6 @@ class Auto_Crafter(QMainWindow):
         self.tabs_widget.addTab(self.calibrations_tab, "Calibrations")
         self.tabs_widget.addTab(self.theme_tab, "Theme")
         self.tabs_widget.addTab(self.settings_tab, "Settings")
-
         # Set Main Tab Layout
         main_tab_vbox = QVBoxLayout()
         main_tab_hbox = QHBoxLayout()
@@ -137,11 +141,13 @@ class Auto_Crafter(QMainWindow):
         # Set Calibrations Tab Layout
         self.calibrations_tab_main_vbox = QVBoxLayout()
         self.calibrations_stack = QStackedWidget()
+        self.calibration_mode_button.setToolTip("Switch between automatic and manual calibration mode.")
         # Auto Calibration Page
         auto_calibration_page = QWidget()
         auto_layout = QVBoxLayout(auto_calibration_page)
         auto_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         auto_layout.addWidget(self.find_add_button)
+        auto_layout.addWidget(self.find_amount_box)
         auto_layout.addWidget(self.find_auto_add_button)
         auto_layout.addWidget(self.find_craft_button)
         auto_layout.addWidget(self.find_search_bar)
@@ -163,27 +169,32 @@ class Auto_Crafter(QMainWindow):
         manual_layout.addWidget(self.set_craft_button_coordinates)
         manual_layout.addWidget(self.set_search_bar_coordinates)
         manual_layout.addWidget(self.set_potion_selection_button_coordinates)
-        # Add comments
+        # Calibrations Page Setup
         self.calibrations_stack.addWidget(auto_calibration_page)       # index 0
         self.calibrations_stack.addWidget(semi_auto_calibration_page)  # index 1
         self.calibrations_stack.addWidget(manual_calibration_page)     # index 2
-
         self.calibrations_tab_main_vbox.addWidget(self.calibration_mode_button)
         self.calibrations_tab_main_vbox.addWidget(self.calibrations_stack)
         self.calibrations_stack.setCurrentIndex(0)
         self.calibrations_tab.setLayout(self.calibrations_tab_main_vbox)
-
-        # Calibrations Tab Setup
-        self.calibration_mode_button.setToolTip("Switch between automatic and manual calibration mode.")
-        
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibaration_mode())
         self.find_add_button.clicked.connect(lambda: self.auto_find_image("add button.png", True, True, True))
+        self.find_amount_box.clicked.connect(lambda: self.auto_find_image("amount box.png", True, True))
         self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True, False))
         self.find_craft_button.clicked.connect(lambda: self.auto_find_image("craft button.png", True, False))
         self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True, False))
         self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("heavenly potion potion selector button.png", True, False))
-
+        #Status Label Setup
+        self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
+        self.mini_status_widget.setStyleSheet("background-color: black; border: 2px solid cyan; border-radius: 6px;")
+        self.mini_status_label.setStyleSheet("color: cyan; font-size: 20px;")
+        self.test_qv = QVBoxLayout(self.mini_status_widget)
+        self.test_qv.setContentsMargins(0, 0, 0, 0)
+        self.test_qv.addWidget(self.mini_status_label)
+        self.mini_status_label.adjustSize()
+        self.mini_status_widget.adjustSize()
+        self.mini_status_widget.move(1300, 75)
         # Set Ui Theme
         self.setStyleSheet("""
             QMainWindow {background-color: black; }
@@ -200,6 +211,7 @@ class Auto_Crafter(QMainWindow):
         # Setup  Hotkeys
         self.start_button.clicked.connect(self.start_macro)
         self.stop_button.clicked.connect(self.stop_macro)
+        self.test_signal.connect(self.test)
         self.setup_hotkeys()
         
     def save_config(self, config, ind=4):
@@ -242,7 +254,6 @@ class Auto_Crafter(QMainWindow):
         self.save_config(config)
 
     def switch_calibaration_mode(self):
-
         if self.calibration_mode == "auto":
             self.calibrations_stack.setCurrentIndex(1)
             self.calibration_mode_button.setText("Current Mode: Semi-Automatic Calibration")
@@ -276,13 +287,13 @@ class Auto_Crafter(QMainWindow):
     def start_macro(self):
         if self.worker is not None and self.worker.is_alive():
             return
-        self.status_label.setText("Status: Running")
+        self.update_status("Running")
         self.run_event.set()
         self.worker = threading.Thread(target=self._macro_worker, daemon=True)
         self.worker.start()
 
     def stop_macro(self):
-        self.status_label.setText("Status: Stopped")
+        self.update_status("Stopped")
         self.run_event.clear()
 
     def _macro_worker(self):
@@ -338,6 +349,14 @@ class Auto_Crafter(QMainWindow):
 
         self.save_config(config)
 
+    def update_status(self, status_text):
+        print(status_text)
+        self.status_label.setText(f"Status: {status_text}")
+        if self.mini_status_label != None:
+            self.mini_status_label.setText(status_text)
+            self.mini_status_label.adjustSize()
+            self.mini_status_widget.adjustSize()
+
     def main_macro_loop(self, slowdown=0.1):
         global auto_add_waitlist
         auto_add_waitlist = []
@@ -362,10 +381,10 @@ class Auto_Crafter(QMainWindow):
                         pyautogui.scroll(2000)
                         print("Scrolled up:")
                         time.sleep(slowdown)
-                        pyautogui.scroll(-22)
+                        pyautogui.scroll(-18)
                         print("Scrolled down to button 4")
                         for x in range(4, int(button_to_add_to[-1])):
-                            pyautogui.scroll(-46)
+                            pyautogui.scroll(-40)
                             time.sleep(slowdown)
                             print("Scrolled down to button:", x+1)
                         time.sleep(slowdown)
@@ -379,7 +398,7 @@ class Auto_Crafter(QMainWindow):
                 mkey.move_to_natural(*config["positions"][f"amount box {int(button_to_check[-1])}"])
                 pyautogui.scroll(2000)
                 print("Scrolled up:")
-                time.sleep(0.01)
+                time.sleep(slowdown)
                 img = ImageGrab.grab(config["positions"][button_to_check]["bbox"])
                 print("Button image captured")
             elif int(button_to_check[-1]) >= 4:
@@ -387,14 +406,14 @@ class Auto_Crafter(QMainWindow):
                 mkey.move_to_natural(*config["positions"]["amount box 4"])
                 pyautogui.scroll(2000)
                 print("Scrolled up:")
-                time.sleep(0.01)
-                pyautogui.scroll(-22)
+                time.sleep(slowdown)
+                pyautogui.scroll(-18)
                 print("Scrolled down to button 4:")
                 for x in range(4, int(button_to_check[-1])):
-                    time.sleep(0.01)
-                    pyautogui.scroll(-46)
+                    time.sleep(slowdown)
+                    pyautogui.scroll(-40)
                     print("Scrolled down to button: ", x + 1)
-                time.sleep(0.01)
+                time.sleep(slowdown)
                 img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 print(button_to_check, "image captured")
             for t in reader.readtext(np.array(img), detail=0):
@@ -470,11 +489,14 @@ class Auto_Crafter(QMainWindow):
     def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
         template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
         data = {"img_scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position_name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
-                               "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["auto add button"]},
-                               "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["craft button"]},
-                               "cauldren search bar.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["search bar"]},
-                                "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["potion selection button"]},
+                               "amount box.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["amount box 1", "amount box 2", "amount box 3", "amount box 4"]},
+                               "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "auto add button"},
+                               "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "craft button"},
+                               "cauldren search bar.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "search bar"},
+                                "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "potion selection button"},
                                 }} 
+
+        add_start_index = None
         
         def rescale_template(template):
             base_scale = data["img_scales"][template]["scale"]   
@@ -485,7 +507,6 @@ class Auto_Crafter(QMainWindow):
             hdc = user32.GetDC(0)
             scale_dpi = gdi32.GetDeviceCaps(hdc, 88)  # Returns 96, 120, 144, etc.
             user32.ReleaseDC(0, hdc)
-
             px_width, px_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
             current_scale = scale_dpi / 96.0
             scale_ratio = current_scale / base_scale
@@ -516,7 +537,6 @@ class Auto_Crafter(QMainWindow):
                 self.save_config(config)
                 
         def find_template():
-            nonlocal add_start_index
             count = 0
             screen = ImageGrab.grab()
             single_match_screen = screen.copy()
@@ -534,13 +554,13 @@ class Auto_Crafter(QMainWindow):
                         print(f"  bbox : {bbox}, center: {center}")
                         ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
                         all_matches_screen.show()
-                        save_position(template, center, bbox if bbox_required else None)
+                        save_position(data["img_scales"][template]["position_name"], center, bbox if bbox_required else None)
                     else:
                         print(f"No match found for template: {template_path}")
 
                 elif multiple:
                     print ("Searching for multiple matches...")
-                    matches = list(pyautogui.locateAllOnScreen(template_scaled, confidence=.75))
+                    matches = list(pyautogui.locateAllOnScreen(template_scaled, confidence=.85))
                     sorted_matches = sorted(matches, key=lambda box: (box.top))
 
                     def multi_image_template_find(match):
@@ -590,6 +610,21 @@ class Auto_Crafter(QMainWindow):
                 add_start_index = 1, (3,)
             else :
                 add_start_index = None
+
+        elif template == "amount box.png":
+            what_amount_boxes = QMessageBox(self)
+            what_amount_boxes.setWindowTitle("Amount Box Selector")
+            what_amount_boxes.setText("Are the amount box(es) 1–3 or 4?")
+            btn_1_3 = what_amount_boxes.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
+            btn_4  = what_amount_boxes.addButton("4",   QMessageBox.ButtonRole.AcceptRole)
+            what_amount_boxes.exec()
+
+            if what_amount_boxes.clickedButton() == btn_4:
+                add_start_index = 1, (3,)
+            else:
+                add_start_index = None
+
+            
         template_scaled = rescale_template(template)
         find_template()
         
