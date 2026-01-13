@@ -108,6 +108,10 @@ class Dark_Sol(QMainWindow):
         self.set_add_button_2_coordinates = QPushButton("Set Add Button 2 Coordinates")
         self.set_add_button_3_coordinates = QPushButton("Set Add Button 3 Coordinates")
         self.set_add_button_4_coordinates = QPushButton("Set Add Button 4 Coordinates")
+        self.set_amount_box_1_coordinates = QPushButton("Set Amount Box 1 Coordinates")
+        self.set_amount_box_2_coordinates = QPushButton("Set Amount Box 2 Coordinates")
+        self.set_amount_box_3_coordinates = QPushButton("Set Amount Box 3 Coordinates")
+        self.set_amount_box_4_coordinates = QPushButton("Set Amount Box 4 Coordinates")
         self.set_auto_add_button_coordinates = QPushButton("Set Auto Add Button Coordinates")
         self.set_craft_button_coordinates = QPushButton("Set Craft Button Coordinates")
         self.set_search_bar_coordinates = QPushButton("Set Search Bar Coordinates")
@@ -116,6 +120,8 @@ class Dark_Sol(QMainWindow):
         self.mini_status_widget = QWidget()
         self.mini_status_label = QLabel("Stopped", self.mini_status_widget)
         # Create Running Variables
+        self.auto_add_waitlist = []
+        self.current_auto_add_potion = None
         self.macro_timer = QTimer(self)
         self.run_event = threading.Event()
         self.worker = None
@@ -359,9 +365,6 @@ class Dark_Sol(QMainWindow):
     def log(self, *args):
         self.update_status(" ".join(str(a) for a in args))
 
-    auto_add_waitlist = []
-    current_auto_add_potion = None
-
     def main_macro_loop(self, slowdown=1.5):
         def add_to_button(button_to_add_to):
             time.sleep(slowdown)
@@ -467,7 +470,7 @@ class Dark_Sol(QMainWindow):
 
                 time.sleep(slowdown)
                 if item_ready:
-                    self.log(f"{item} is ready, proceeding to craft.")
+                    self.log(f"{item.capitalize()} is ready, proceeding to craft.")
                     time.sleep(slowdown)
                     for button_to_click in config["item_presets"][item]["additional buttons to click"]:
                         add_to_button(button_to_click)
@@ -481,7 +484,7 @@ class Dark_Sol(QMainWindow):
                             time.sleep(slowdown)
                         elif not self.current_auto_add_potion == None and item not in self.auto_add_waitlist:
                             self.auto_add_waitlist.append(item)
-                            self.log(f"{item} added to auto add waitlist")
+                            self.log(f"{item.capitalize()} added to auto add waitlist")
                             time.sleep(slowdown)
                     else:
                         mkey.left_click_xy_natural(*config["positions"]["craft button"])
@@ -490,7 +493,7 @@ class Dark_Sol(QMainWindow):
 
             elif item == self.current_auto_add_potion:
                 item_ready = True
-                self.log(f"{item} set to ready")
+                self.log(f"{item.capitalize()} set to ready")
                 time.sleep(slowdown)
                 for slot in range(1, config["item_presets"][item]["crafting slots"] + 1):  # ignore manual click slots
                     if not check_button("add button " + str(slot)):
@@ -506,8 +509,8 @@ class Dark_Sol(QMainWindow):
                         mkey.left_click_xy_natural(*config["positions"]["search bar"])
                         self.log("Search bar clicked")
                         time.sleep(slowdown)
-                        keyboard.Controller().type(self.auto_add_waitlist[0])
-                        self.log(f"Item searched: {self.auto_add_waitlist[0]}")
+                        keyboard.Controller().type(self.auto_add_waitlist[0].capitalize())
+                        self.log(f"Item searched: {self.auto_add_waitlist[0].capitalize()}")
                         mkey.move_to_natural(*config["positions"]["potion selection button"])
                         self.log("Moved to potion selection button")
                         time.sleep(slowdown)
@@ -522,11 +525,12 @@ class Dark_Sol(QMainWindow):
                         time.sleep(slowdown)
                         self.current_auto_add_potion = self.auto_add_waitlist.pop(0)
                         time.sleep(slowdown)
+        macro_loop_iteration("bound")
+        #for potion in config["item_presets"].keys():
+        #    macro_loop_iteration(potion)
 
-        for potion in config["item_presets"].keys():
-            macro_loop_iteration(potion)
-
-    def auto_find_image(self, template, save=False, multiple=False, bbox_requicyan=False):
+    def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
+        add_start_index = None
         template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
         data = {"img_scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position_name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
                                "amount box.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["amount box 1", "amount box 2", "amount box 3", "amount box 4"]},
@@ -536,8 +540,6 @@ class Dark_Sol(QMainWindow):
                                 "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "potion selection button"},
                                 }} 
 
-        add_start_index = None
-        
         def rescale_template(template):
             base_scale = data["img_scales"][template]["scale"]   
             base_resolution = data["img_scales"][template]["resolution"]
@@ -594,7 +596,7 @@ class Dark_Sol(QMainWindow):
                         self.log(f"  bbox : {bbox}, center: {center}")
                         ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
                         all_matches_screen.show()
-                        save_position(data["img_scales"][template]["position_name"], center, bbox if bbox_requicyan else None)
+                        save_position(data["img_scales"][template]["position_name"], center, bbox if bbox_required else None)
                     else:
                         self.log(f"No match found for template: {template_path}")
 
@@ -618,7 +620,7 @@ class Dark_Sol(QMainWindow):
                             self.log(count)
                             multi_image_template_find(match)
                             single_match_screen.show()
-                            save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_requicyan else None)
+                            save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_required else None)
                             
                     elif add_start_index != None:
                         for count, match in enumerate(sorted_matches, start=add_start_index[0]):
@@ -627,7 +629,7 @@ class Dark_Sol(QMainWindow):
                             multi_image_template_find(match)
                             if count in add_start_index[1]:
                                 single_match_screen.show()
-                                save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_requicyan else None)
+                                save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_required else None)
                     
             except (pyscreeze_ImageNotFoundException, pyautogui.ImageNotFoundException):
                 self.log(f"No matches found for template: {template_path}")
