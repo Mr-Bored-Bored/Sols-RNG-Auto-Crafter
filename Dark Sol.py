@@ -26,6 +26,7 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 # 1. new auto add button checking logic
 # 2. additional items to add check failure logic)
 # 6. Make auto add checks ignore manual click slots (lucky potions)
+# 7. Fix other widgets not closing properly
 
 # Loading Screen
 class loading_thread(QThread):
@@ -104,10 +105,18 @@ class Dark_Sol(QMainWindow):
         # Semi Auto Calibration mode
         self.set_add_button_template = QPushButton("Set Add Button Template")
         # Manual Calibration mode
+        self.add_button_coordinates_selector = QWidget()
+        self.add_button_coordinates_selector.setWindowTitle("Set Add Button Coordinates")
+        self.add_button_coordinates_selector_layout = QVBoxLayout(self.add_button_coordinates_selector)
+        self.set_add_button_coordinates = QPushButton("Set Add Button Coordinates", self)
         self.set_add_button_1_coordinates = QPushButton("Set Add Button 1 Coordinates")
         self.set_add_button_2_coordinates = QPushButton("Set Add Button 2 Coordinates")
         self.set_add_button_3_coordinates = QPushButton("Set Add Button 3 Coordinates")
         self.set_add_button_4_coordinates = QPushButton("Set Add Button 4 Coordinates")
+        self.amount_box_coordinates_selector = QWidget()
+        self.amount_box_coordinates_selector.setWindowTitle("Set Amount Box Coordinates")
+        self.amount_box_coordinates_selector_layout = QVBoxLayout(self.amount_box_coordinates_selector)
+        self.set_amount_box_coordinates = QPushButton("Set Amount Box Coordinates", self)
         self.set_amount_box_1_coordinates = QPushButton("Set Amount Box 1 Coordinates")
         self.set_amount_box_2_coordinates = QPushButton("Set Amount Box 2 Coordinates")
         self.set_amount_box_3_coordinates = QPushButton("Set Amount Box 3 Coordinates")
@@ -166,14 +175,24 @@ class Dark_Sol(QMainWindow):
         manual_calibration_page = QWidget()
         manual_layout = QVBoxLayout(manual_calibration_page)
         manual_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        manual_layout.addWidget(self.set_add_button_1_coordinates)
-        manual_layout.addWidget(self.set_add_button_2_coordinates)
-        manual_layout.addWidget(self.set_add_button_3_coordinates)
-        manual_layout.addWidget(self.set_add_button_4_coordinates)
+        self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_1_coordinates)
+        self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_2_coordinates)
+        self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_3_coordinates)
+        self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_4_coordinates)
+        self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_1_coordinates)
+        self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_2_coordinates)
+        self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_3_coordinates)
+        self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_4_coordinates)
+        manual_layout.addWidget(self.set_add_button_coordinates)
+        manual_layout.addWidget(self.set_amount_box_coordinates)
         manual_layout.addWidget(self.set_auto_add_button_coordinates)
         manual_layout.addWidget(self.set_craft_button_coordinates)
         manual_layout.addWidget(self.set_search_bar_coordinates)
         manual_layout.addWidget(self.set_potion_selection_button_coordinates)
+        self.add_button_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 30px;}")
+        self.amount_box_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 30px;}")
+        self.add_button_coordinates_selector.adjustSize()
+        self.amount_box_coordinates_selector.adjustSize()
         # Calibrations Page Setup
         self.calibrations_stack.addWidget(auto_calibration_page)       # index 0
         self.calibrations_stack.addWidget(semi_auto_calibration_page)  # index 1
@@ -184,6 +203,8 @@ class Dark_Sol(QMainWindow):
         self.calibrations_tab.setLayout(self.calibrations_tab_main_vbox)
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibaration_mode())
+        self.set_add_button_coordinates.clicked.connect(lambda: self.show_add_button_coordinates_selector())
+        self.set_amount_box_coordinates.clicked.connect(lambda: self.show_amount_box_coordinates_selector())
         self.find_add_button.clicked.connect(lambda: self.auto_find_image("add button.png", True, True, True))
         self.find_amount_box.clicked.connect(lambda: self.auto_find_image("amount box.png", True, True))
         self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True, False))
@@ -218,96 +239,6 @@ class Dark_Sol(QMainWindow):
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
         
-    def save_config(self, config, ind=4):
-        S = (str, int, float, bool, type(None))
-
-        def d(o, l=0):
-            p = " " * (ind * l)
-            np = " " * (ind * (l + 1))
-            if isinstance(o, dict):
-                if not o:
-                    return "{}"
-                it = list(o.items())
-                if len(it) <= 2 and all(isinstance(k, str) for k, _ in it) and all(
-                    isinstance(v, S)
-                    or (isinstance(v, (list, tuple)) and len(v) <= 6 and all(isinstance(x, S) for x in v))
-                    for _, v in it
-                ):
-                    return "{" + ", ".join(
-                        f"{json.dumps(k)}: {json.dumps(list(v) if isinstance(v, tuple) else v)}" for k, v in it
-                    ) + "}"
-                return "{\n" + "\n".join(
-                    f"{np}{json.dumps(k)}: {d(v, l + 1)}{',' if i < len(it) - 1 else ''}" for i, (k, v) in enumerate(it)
-                ) + f"\n{p}}}"
-            if isinstance(o, (list, tuple)):
-                a = list(o)
-                if len(a) <= 6 and all(isinstance(x, S) for x in a):
-                    return json.dumps(a)
-                if not a:
-                    return "[]"
-                return "[\n" + "\n".join(
-                    f"{np}{d(v, l + 1)}{',' if i < len(a) - 1 else ''}" for i, v in enumerate(a)
-                ) + f"\n{p}]"
-            return json.dumps(o)
-
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            f.write(d(config) + "\n")
-    
-    def update_config(self, key, new_value):
-        config[key] = new_value
-        self.save_config(config)
-
-    def switch_calibaration_mode(self):
-        if self.calibration_mode == "auto":
-            self.calibrations_stack.setCurrentIndex(1)
-            self.calibration_mode_button.setText("Current Mode: Semi-Automatic Calibration")
-            self.calibration_mode = "semi-auto"
-
-        elif self.calibration_mode == "semi-auto":
-            self.calibrations_stack.setCurrentIndex(2)
-            self.calibration_mode_button.setText("Current Mode: Manual Calibration")
-            self.calibration_mode = "manual"
-
-        elif self.calibration_mode == "manual":
-            self.calibrations_stack.setCurrentIndex(0)
-            self.calibration_mode_button.setText("Current Mode: Automatic Calibration")
-            self.calibration_mode = "auto"
-
-    def setup_hotkeys(self):
-        self.start_macro_signal.connect(self.start_macro)
-        self.stop_macro_signal.connect(self.stop_macro)
-        threading.Thread(target=self.hotkey_listener, daemon=True).start()
-
-    def hotkey_listener(self):
-        def on_press(key):
-            if key == keyboard.Key.f1:
-                self.start_macro_signal.emit()
-            elif key == keyboard.Key.f2:
-                self.stop_macro_signal.emit()
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
-        listener.join()
-
-    def start_macro(self):
-        if self.worker is not None and self.worker.is_alive():
-            return
-        self.mini_status_widget.show()
-        self.update_status("Running")
-        self.run_event.set()
-        self.worker = threading.Thread(target=self._macro_worker, daemon=True)
-        self.worker.start()
-
-    def stop_macro(self):
-        self.run_event.clear()
-
-    def _macro_worker(self):
-        while self.run_event.is_set():
-            self.main_macro_loop()
-            if not self.run_event.wait(0.1):
-                self.update_status("Stopped")
-                self.mini_status_widget.hide()
-                break
-
     def initalize_config(self):
         global config
 
@@ -352,8 +283,106 @@ class Dark_Sol(QMainWindow):
                                         "instant craft": False      
                                             },
                                         }}
+            
+    def save_config(self, config, ind=4):
+        S = (str, int, float, bool, type(None))
 
+        def d(o, l=0):
+            p = " " * (ind * l)
+            np = " " * (ind * (l + 1))
+            if isinstance(o, dict):
+                if not o:
+                    return "{}"
+                it = list(o.items())
+                if len(it) <= 2 and all(isinstance(k, str) for k, _ in it) and all(
+                    isinstance(v, S)
+                    or (isinstance(v, (list, tuple)) and len(v) <= 6 and all(isinstance(x, S) for x in v))
+                    for _, v in it
+                ):
+                    return "{" + ", ".join(
+                        f"{json.dumps(k)}: {json.dumps(list(v) if isinstance(v, tuple) else v)}" for k, v in it
+                    ) + "}"
+                return "{\n" + "\n".join(
+                    f"{np}{json.dumps(k)}: {d(v, l + 1)}{',' if i < len(it) - 1 else ''}" for i, (k, v) in enumerate(it)
+                ) + f"\n{p}}}"
+            if isinstance(o, (list, tuple)):
+                a = list(o)
+                if len(a) <= 6 and all(isinstance(x, S) for x in a):
+                    return json.dumps(a)
+                if not a:
+                    return "[]"
+                return "[\n" + "\n".join(
+                    f"{np}{d(v, l + 1)}{',' if i < len(a) - 1 else ''}" for i, v in enumerate(a)
+                ) + f"\n{p}]"
+            return json.dumps(o)
+
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            f.write(d(config) + "\n")
+    
+    def update_config(self, key, new_value):
+        config[key] = new_value
         self.save_config(config)
+
+    def show_add_button_coordinates_selector(self, show=True):
+        self.add_button_coordinates_selector.setVisible(show)
+    
+    def show_amount_box_coordinates_selector(self, show=True):
+        self.amount_box_coordinates_selector.setVisible(show)
+
+    def switch_calibaration_mode(self):
+        if self.calibration_mode == "auto":
+            self.calibrations_stack.setCurrentIndex(1)
+            self.calibration_mode_button.setText("Current Mode: Semi-Automatic Calibration")
+            self.calibration_mode = "semi-auto"
+
+        elif self.calibration_mode == "semi-auto":
+            self.calibrations_stack.setCurrentIndex(2)
+            self.calibration_mode_button.setText("Current Mode: Manual Calibration")
+            self.calibration_mode = "manual"
+
+        elif self.calibration_mode == "manual":
+            self.calibrations_stack.setCurrentIndex(0)
+            self.calibration_mode_button.setText("Current Mode: Automatic Calibration")
+            self.calibration_mode = "auto"
+        
+
+    def hotkey_listener(self):
+        def on_press(key):
+            if key == keyboard.Key.f1:
+                self.start_macro_signal.emit()
+            elif key == keyboard.Key.f2:
+                self.stop_macro_signal.emit()
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
+        listener.join()
+
+    def setup_hotkeys(self):
+        self.start_macro_signal.connect(self.start_macro)
+        self.stop_macro_signal.connect(self.stop_macro)
+        threading.Thread(target=self.hotkey_listener, daemon=True).start()
+
+    def start_macro(self):
+        if self.worker is not None and self.worker.is_alive():
+            return
+        self.mini_status_widget.show()
+        self.update_status("Running")
+        self.run_event.set()
+        self.worker = threading.Thread(target=self._macro_worker, daemon=True)
+        self.worker.start()
+
+    def stop_macro(self):
+        self.run_event.clear()
+
+    def _macro_worker(self):
+        while self.run_event.is_set():
+            self.main_macro_loop()
+            if not self.run_event.wait(0.1):
+                self.update_status("Stopped")
+                self.mini_status_widget.hide()
+                break
+
+    def log(self, *args):
+        self.update_status(" ".join(str(a) for a in args))
 
     def update_status(self, status_text):
         self.status_label.setText(f"Status: {status_text}")
@@ -361,9 +390,6 @@ class Dark_Sol(QMainWindow):
             self.mini_status_label.setText(status_text)
             self.mini_status_label.adjustSize()
             self.mini_status_widget.adjustSize()
-
-    def log(self, *args):
-        self.update_status(" ".join(str(a) for a in args))
 
     def main_macro_loop(self, slowdown=1.5):
         def add_to_button(button_to_add_to):
@@ -529,6 +555,8 @@ class Dark_Sol(QMainWindow):
         #for potion in config["item_presets"].keys():
         #    macro_loop_iteration(potion)
 
+
+
     def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
         add_start_index = None
         template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
@@ -539,6 +567,18 @@ class Dark_Sol(QMainWindow):
                                "cauldren search bar.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "search bar"},
                                 "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "potion selection button"},
                                 }} 
+
+        def save_position(position_name, center, bbox):
+            if not save:
+                return
+            if QMessageBox.information(self, "Template Found", "Would you like to save the found coordinates", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+                return
+            if bbox != None:
+                config["positions"][position_name] = {"bbox": bbox, "center": center}
+                self.save_config(config)
+            else:
+                config["positions"][position_name] = center
+                self.save_config(config)
 
         def rescale_template(template):
             base_scale = data["img_scales"][template]["scale"]   
@@ -565,18 +605,6 @@ class Dark_Sol(QMainWindow):
             template_scaled = template_img.resize((int(template_img.width * total_scale_x), int(template_img.height * total_scale_y)), Image.Resampling.LANCZOS)
             template_scaled.show()
             return template_scaled
-
-        def save_position(position_name, center, bbox):
-            if not save:
-                return
-            if QMessageBox.information(self, "Template Found", "Would you like to save the found coordinates", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
-                return
-            if bbox != None:
-                config["positions"][position_name] = {"bbox": bbox, "center": center}
-                self.save_config(config)
-            else:
-                config["positions"][position_name] = center
-                self.save_config(config)
                 
         def find_template():
             count = 0
@@ -584,8 +612,6 @@ class Dark_Sol(QMainWindow):
             single_match_screen = screen.copy()
             all_matches_screen = screen.copy()
             bbox, center = None, None
-
-            self.log("Finding all matches of template...")
         
             try:
                 if not multiple:
@@ -666,7 +692,6 @@ class Dark_Sol(QMainWindow):
             else:
                 add_start_index = None
 
-            
         template_scaled = rescale_template(template)
         find_template()
         
