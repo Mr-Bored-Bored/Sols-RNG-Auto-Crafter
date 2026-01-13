@@ -26,8 +26,6 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 # 1. new auto add button checking logic
 # 2. additional items to add check failure logic)
 # 6. Make auto add checks ignore manual click slots (lucky potions)
-# 7. Improve logs
-# 8. Fix scrolling with add buttons past 4
 
 # Loading Screen
 class loading_thread(QThread):
@@ -50,13 +48,13 @@ class loading_screen(QWidget):
         super().__init__()
         parts_to_load = 3
         self.loading_bar = QProgressBar(self)
-        self.setWindowTitle("Loading Auto Crafter")
+        self.setWindowTitle("Loading Dark Sol")
         self.setStyleSheet(""" QProgressBar {background-color: black; color: white; border-radius: 5px; border: 1px solid black; font-size: 20px; height: 40px;} QProgressBar::chunk {background-color: lime; }""")
         self.setGeometry(0, 0, 500, 100)
         self.loading_bar.setGeometry(0, 0, 500, 100)
         self.loading_bar.setRange(0, parts_to_load)
         self.loading_bar.setValue(0)
-        self.loading_bar.setFormat("Loading Auto Crafter (You should not see this)")
+        self.loading_bar.setFormat("Loading Dark Sol (You should not see this)")
         self.loading_bar.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.loader_thread = loading_thread()
@@ -70,18 +68,18 @@ class loading_screen(QWidget):
 
     def on_loaded(self):
         self.close()
-        main_window = Auto_Crafter()
+        main_window = Dark_Sol()
         main_window.show()
 
-# Main Auto Crafter
-class Auto_Crafter(QMainWindow):
+# Main Dark Sol Script
+class Dark_Sol(QMainWindow):
     start_macro_signal = pyqtSignal()
     stop_macro_signal = pyqtSignal()
 
     def __init__(self):
         # Create main window
         super().__init__()
-        self.setWindowTitle("Auto Crafter")
+        self.setWindowTitle("Dark Sol")
         self.setGeometry(100, 100, 400, 100)
         # Create Tabs
         self.tabs_widget = QTabWidget()
@@ -377,10 +375,10 @@ class Auto_Crafter(QMainWindow):
                 mkey.left_click()
             elif int(button_to_add_to[-1]) >= 4:
                 mkey.move_to_natural(*config["positions"]["add button 4"]["center"])
-                self.log("Moved to add button ((4)) center:")
+                self.log("Moved to add button ((4)) center")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
-                self.log("Scrolled up:")
+                self.log("Scrolled up")
                 time.sleep(slowdown)
                 pyautogui.scroll(-18)
                 self.log("Scrolled down to slot 4")
@@ -388,7 +386,7 @@ class Auto_Crafter(QMainWindow):
                 for x in range(4, int(button_to_add_to[-1])):
                     pyautogui.scroll(-40)
                     time.sleep(slowdown)
-                    self.log("Scrolled down to slot:", x + 1)
+                    self.log("Scrolled down to slot", x + 1)
                 time.sleep(slowdown)
                 mkey.left_click()
                 self.log(f"{button_to_add_to} clicked")
@@ -401,7 +399,7 @@ class Auto_Crafter(QMainWindow):
                 self.log(f"Moved to amount box {int(button_to_check[-1])}")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
-                self.log("Scrolled up:")
+                self.log("Scrolled up")
                 time.sleep(slowdown)
                 img = ImageGrab.grab(config["positions"][button_to_check]["bbox"])
                 self.log(button_to_check, "image captured")
@@ -411,15 +409,15 @@ class Auto_Crafter(QMainWindow):
                 self.log("Moved to amount box ((4))")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
-                self.log("Scrolled up:")
+                self.log("Scrolled up")
                 time.sleep(slowdown)
                 pyautogui.scroll(-18)
-                self.log("Scrolled down to slot 4:")
+                self.log("Scrolled down to slot 4")
                 time.sleep(slowdown)
                 for x in range(4, int(button_to_check[-1])):
                     time.sleep(slowdown)
                     pyautogui.scroll(-40)
-                    self.log("Scrolled down to slot:", x + 1)
+                    self.log("Scrolled down to slot", x + 1)
                 time.sleep(slowdown)
                 img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 self.log(button_to_check, "image captured")
@@ -441,13 +439,13 @@ class Auto_Crafter(QMainWindow):
                 self.log("Search bar clicked")
                 time.sleep(slowdown)
                 keyboard.Controller().type(config["item_presets"][item]["name to search"])
-                self.log("Item searched:", config["item_presets"][item]["name to search"])
+                self.log("Item searched:", config["item_presets"][item]["name to search"].capitalize())
                 time.sleep(slowdown)
                 mkey.move_to_natural(*config["positions"]["potion selection button"])
-                self.log("Moved to potion selection button:")
+                self.log("Moved to potion selection button")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
-                self.log("Scrolled up:")
+                self.log("Scrolled up")
                 time.sleep(slowdown)
                 mkey.left_click()
                 self.log("Selection button clicked")
@@ -511,10 +509,10 @@ class Auto_Crafter(QMainWindow):
                         keyboard.Controller().type(self.auto_add_waitlist[0])
                         self.log(f"Item searched: {self.auto_add_waitlist[0]}")
                         mkey.move_to_natural(*config["positions"]["potion selection button"])
-                        self.log("Moved to potion selection button:")
+                        self.log("Moved to potion selection button")
                         time.sleep(slowdown)
                         pyautogui.scroll(2000)
-                        self.log("Scrolled up:")
+                        self.log("Scrolled up")
                         time.sleep(slowdown)
                         mkey.left_click()
                         self.log("Selection button clicked")
@@ -525,10 +523,10 @@ class Auto_Crafter(QMainWindow):
                         self.current_auto_add_potion = self.auto_add_waitlist.pop(0)
                         time.sleep(slowdown)
 
-        macro_loop_iteration("bound")
+        for potion in config["item_presets"].keys():
+            macro_loop_iteration(potion)
 
-        
-    def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
+    def auto_find_image(self, template, save=False, multiple=False, bbox_requicyan=False):
         template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
         data = {"img_scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position_name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
                                "amount box.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["amount box 1", "amount box 2", "amount box 3", "amount box 4"]},
@@ -596,7 +594,7 @@ class Auto_Crafter(QMainWindow):
                         self.log(f"  bbox : {bbox}, center: {center}")
                         ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
                         all_matches_screen.show()
-                        save_position(data["img_scales"][template]["position_name"], center, bbox if bbox_required else None)
+                        save_position(data["img_scales"][template]["position_name"], center, bbox if bbox_requicyan else None)
                     else:
                         self.log(f"No match found for template: {template_path}")
 
@@ -620,7 +618,7 @@ class Auto_Crafter(QMainWindow):
                             self.log(count)
                             multi_image_template_find(match)
                             single_match_screen.show()
-                            save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_required else None)
+                            save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_requicyan else None)
                             
                     elif add_start_index != None:
                         for count, match in enumerate(sorted_matches, start=add_start_index[0]):
@@ -629,7 +627,7 @@ class Auto_Crafter(QMainWindow):
                             multi_image_template_find(match)
                             if count in add_start_index[1]:
                                 single_match_screen.show()
-                                save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_required else None)
+                                save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_requicyan else None)
                     
             except (pyscreeze_ImageNotFoundException, pyautogui.ImageNotFoundException):
                 self.log(f"No matches found for template: {template_path}")
@@ -675,8 +673,3 @@ if __name__ == "__main__":
     loader = loading_screen()
     loader.show()
     sys.exit(app.exec())
-
-
-
-
-
