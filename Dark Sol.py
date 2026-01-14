@@ -17,16 +17,13 @@ local_appdata_directory = pathlib.Path(os.environ["LOCALAPPDATA"]) / "Dark Sol"
 CONFIG_PATH = local_appdata_directory / "Dark Sol config.json"
 os.makedirs(local_appdata_directory, exist_ok=True)
 
-# Tasks 
+# Tasks (For Mr. Bored)
 # 1. Add amount button logic
 # 2. Add potion selection
 # 3. Add item selection for each potion
 # 4. Add additional buttons to click check to prevent softlock 
-# 5. Add auto add logic (
-# 1. new auto add button checking logic
-# 2. additional items to add check failure logic)
-# 6. Make auto add checks ignore manual click slots (lucky potions)
-# 7. Fix other widgets not closing properly
+# 5. Make auto add checks ignore manual click slots (lucky potions)
+# 6. Fix other widgets not closing properly
 
 # Loading Screen
 class loading_thread(QThread):
@@ -202,7 +199,7 @@ class Dark_Sol(QMainWindow):
         self.calibrations_stack.setCurrentIndex(0)
         self.calibrations_tab.setLayout(self.calibrations_tab_main_vbox)
         # Button Connectors
-        self.calibration_mode_button.clicked.connect(lambda: self.switch_calibaration_mode())
+        self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
         self.set_add_button_coordinates.clicked.connect(lambda: self.show_add_button_coordinates_selector())
         self.set_amount_box_coordinates.clicked.connect(lambda: self.show_amount_box_coordinates_selector())
         self.find_add_button.clicked.connect(lambda: self.auto_find_image("add button.png", True, True, True))
@@ -246,43 +243,52 @@ class Dark_Sol(QMainWindow):
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 config = json.load(f)
         else:
-            config = {"positions": {
-                                "add button 1": {"bbox": (757, 602, 837, 631), "center": (797, 616)},
-                                "add button 2": {"bbox": (757, 656, 837, 685), "center": (797, 670)}, 
-                                "add button 3": {"bbox": (757, 710, 837, 739), "center": (797, 724)}, 
-                                "add button 4": {"bbox": (757, 739, 837, 768), "center": (797, 753)},
-                                "amount box 1": (717, 616),
-                                "amount box 2": (717, 670),
-                                "amount box 3": (717, 724),
-                                "amount box 4": (717, 753),
-                                "potion selection button": (1140, 400),
-                                "search bar": (909, 322),
-                                "auto add button": (713, 560),
-                                "craft button": (580, 560),
-                                },
+            config = {
+                    "positions": {
+                        "add button 1": {"bbox": [757, 656, 837, 688], "center": [797, 672]},
+                        "add button 2": {"bbox": [757, 711, 837, 743], "center": [797, 727]},
+                        "add button 3": {"bbox": [757, 765, 837, 797], "center": [797, 781]},
+                        "add button 4": {"bbox": [757, 794, 837, 826], "center": [797, 810]},
+                        "amount box 1": [715, 672],
+                        "amount box 2": [715, 726],
+                        "amount box 3": [715, 780],
+                        "amount box 4": [715, 810],
+                        "potion selection button": [1146, 460],
+                        "search bar": [1137, 381],
+                        "auto add button": [707, 618],
+                        "craft button": [573, 618]
+                    },
                     "item_presets": {
-                                "bound": {
-                                        "name to search": "bound",
-                                        "buttons to check": ["add button 1", "add button 2"],
-                                        "additional buttons to click": ["add button 4"],
-                                        "crafting slots": 4,
-                                        "instant craft": False
-                                            },
-                                "zeus godly": {
-                                        "name to search": "zeus",
-                                        "buttons to check": ["add button 3", "add button 4"],
-                                        "additional buttons to click": ["add button 1", "add button 2"],
-                                        "crafting slots": 5,
-                                        "instant craft": False
-                                            },
-                                "warp": {
-                                        "name to search": "warp",
-                                        "buttons to check": ["add button 4", "add button 5", "add button 6"],
-                                        "additional buttons to click": ["add button 1", "add button 2"],
-                                        "crafting slots": 6,
-                                        "instant craft": False      
-                                            },
-                                        }}
+                        "bound": {
+                            "name to search": "bound",
+                            "buttons to check": ["add button 1", "add button 2"],
+                            "additional buttons to click": ["add button 4"],
+                            "crafting slots": 4,
+                            "instant craft": False
+                        },
+                        "heavenly": {
+                            "name to search": "heavenly",
+                            "buttons to check": ["add button 2", "add button 3"],
+                            "additional buttons to click" : ["add button 1",],
+                            "crafting slots": 5,
+                            "instant craft": False
+                        },
+                        "zeus godly": {
+                            "name to search": "zeus",
+                            "buttons to check": ["add button 3", "add button 4"],
+                            "additional buttons to click": ["add button 1", "add button 2"],
+                            "crafting slots": 5,
+                            "instant craft": False
+                        },
+                        "warp": {
+                            "name to search": "warp",
+                            "buttons to check": ["add button 4", "add button 5", "add button 6"],
+                            "additional buttons to click": ["add button 1", "add button 2"],
+                            "crafting slots": 6,
+                            "instant craft": False
+                        }
+                    }
+                }
             
     def save_config(self, config, ind=4):
         S = (str, int, float, bool, type(None))
@@ -329,7 +335,7 @@ class Dark_Sol(QMainWindow):
     def show_amount_box_coordinates_selector(self, show=True):
         self.amount_box_coordinates_selector.setVisible(show)
 
-    def switch_calibaration_mode(self):
+    def switch_calibration_mode(self):
         if self.calibration_mode == "auto":
             self.calibrations_stack.setCurrentIndex(1)
             self.calibration_mode_button.setText("Current Mode: Semi-Automatic Calibration")
@@ -345,7 +351,6 @@ class Dark_Sol(QMainWindow):
             self.calibration_mode_button.setText("Current Mode: Automatic Calibration")
             self.calibration_mode = "auto"
         
-
     def hotkey_listener(self):
         def on_press(key):
             if key == keyboard.Key.f1:
@@ -391,7 +396,7 @@ class Dark_Sol(QMainWindow):
             self.mini_status_label.adjustSize()
             self.mini_status_widget.adjustSize()
 
-    def main_macro_loop(self, slowdown=1.5):
+    def main_macro_loop(self, slowdown=0.1):
         def add_to_button(button_to_add_to):
             time.sleep(slowdown)
             if int(button_to_add_to[-1]) < 4:
@@ -551,9 +556,10 @@ class Dark_Sol(QMainWindow):
                         time.sleep(slowdown)
                         self.current_auto_add_potion = self.auto_add_waitlist.pop(0)
                         time.sleep(slowdown)
-        macro_loop_iteration("bound")
-        #for potion in config["item_presets"].keys():
-        #    macro_loop_iteration(potion)
+        #macro_loop_iteration("bound")
+        for potion in config["item_presets"].keys():
+            if potion != "warp":
+                macro_loop_iteration(potion)
 
 
 
