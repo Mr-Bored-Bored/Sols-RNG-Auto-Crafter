@@ -20,10 +20,12 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 # Tasks (For Mr. Bored)
 # 1. Add amount button logic
 # 2. Add potion selection
-# 3. Add item selection for each potion
+# 3. Add item selection for each potion / presets
 # 4. Add additional buttons to click check to prevent softlock 
 # 5. Make auto add checks ignore manual click slots (lucky potions)
 # 6. Fix other widgets not closing properly
+# 7. Add auto add button checking
+# 8. Implement Semi-Auto and Manual Calibration modes
 
 # Loading Screen
 class loading_thread(QThread):
