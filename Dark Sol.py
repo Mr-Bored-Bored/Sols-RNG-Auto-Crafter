@@ -259,6 +259,7 @@ class Dark_Sol(QMainWindow):
                         "craft button": [573, 618]
                     },
                 }
+            self.save_config(config)
             
     def save_config(self, config, ind=4):
         S = (str, int, float, bool, type(None))
@@ -395,7 +396,6 @@ class Dark_Sol(QMainWindow):
             add_start_index = None
             template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
              
-
             def save_position(position_name, center, bbox):
                 if not save:
                     return
