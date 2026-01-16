@@ -394,6 +394,29 @@ class Dark_Sol(QMainWindow):
         self.stop_macro_signal.connect(self.stop_macro)
         threading.Thread(target=self.hotkey_listener, daemon=True).start()
 
+    def find_pixels_with_color(self, *targets):
+        img = ImageGrab.grab()
+        pixels = np.asarray(img, dtype=np.uint8)
+        mask = np.zeros((pixels.shape[0], pixels.shape[1]), dtype=bool)
+        print(mask)
+        # For each target, parse it into (r,g,b) and OR its matches into the mask.
+        for target in targets:
+            if isinstance(target, str):
+                clean = target.strip()
+                if clean.startswith("#"):
+                    clean = clean[1:]
+                value = int(clean, 16)
+                r = (value >> 16) & 0xFF
+                g = (value >> 8) & 0xFF
+                b = value & 0xFF
+            else:
+                r, g, b = target
+
+            mask |= ((pixels[:, :, 0] == r) & (pixels[:, :, 1] == g) & (pixels[:, :, 2] == b))
+
+        match_count = int(mask.sum())
+        return match_count
+
     def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
             add_start_index = None
             template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
@@ -683,7 +706,8 @@ class Dark_Sol(QMainWindow):
 
                     if not data["item_presets"][item]["instant craft"]:
                         if self.current_auto_add_potion == None:
-                            self.move_and_click(config["positions"]["auto add button"])
+                            if self.find_pixels_with_color("#C2FFA6", "#C1FEA5") == 0:
+                                self.move_and_click(config["positions"]["auto add button"])
                             self.current_auto_add_potion = item
                             self.log("Clicked auto add button")
                             time.sleep(slowdown)
@@ -717,7 +741,8 @@ class Dark_Sol(QMainWindow):
                     time.sleep(slowdown)
                     if len(self.auto_add_waitlist) > 0:
                         search_for_potion(self.auto_add_waitlist[0])
-                        self.move_and_click(config["positions"]["auto add button"])
+                        if self.find_pixels_with_color("#C2FFA6", "#C1FEA5") == 0:
+                                self.move_and_click(config["positions"]["auto add button"])
                         self.log("Clicked auto add button")
                         time.sleep(slowdown)
                         self.current_auto_add_potion = self.auto_add_waitlist.pop(0)
