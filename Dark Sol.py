@@ -3,13 +3,14 @@ import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 # Imports
 import os, sys, threading, pyautogui, time, ctypes, pathlib, json
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QFormLayout, QMessageBox, QProgressBar, QStackedWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
 from PIL import Image, ImageDraw, ImageGrab
 from mousekey import MouseKey
 from pynput import keyboard
 import numpy as np
+from copy import deepcopy
 
 mkey = MouseKey()
 mkey.enable_failsafekill('ctrl+e')
@@ -17,20 +18,30 @@ local_appdata_directory = pathlib.Path(os.environ["LOCALAPPDATA"]) / "Dark Sol"
 CONFIG_PATH = local_appdata_directory / "Dark Sol config.json"
 os.makedirs(local_appdata_directory, exist_ok=True)
 
-# Tasks (For Mr. Bored)
-# 1. Add amount button logic
-# 2. Add potion selection
-# 3. Add item selection for each potion / presets
-# 4. Add additional buttons to click check to prevent softlock 
-# 5. Make auto add checks ignore manual click slots (lucky potions)
-# 6. Fix other widgets not closing properly
-# 7. Implement Semi-Auto and Manual Calibration modes
-# 8. Add multi template for single location
-# 9. Add actual logger
-# 10. Make confidence for template find be specific per template
-# 11. Make plugins system
-# 12. Add theme tab functionality
-# 13. Add settings tab functionality
+"""
+# *Tasks (For Mr. Bored)
+
+# Nessesary for Release:
+1. Add amount button logic (Necessary for release) (Completed?)
+2. Add item selection for each potion / presets (Necessary for release)
+3. Make auto add checks ignore manual click slots (lucky potions) (Necessary for release)
+4. Implement Semi-Auto and Manual Calibration modes (Necessary for release)
+5. Make confidence for template find be specific per template (Necessary for release)
+
+# Might be added for Release:
+6. Add settings tab functionality (Might be added by release)
+
+# Optional for Release:
+7. Fix other widgets not closing properly
+8. Add multi template for single location
+9. Add actual logger
+10. Make plugins system
+11. Add theme tab functionality
+12. # Able to handle corrupt config
+13. Add config backups
+14. Add ability to export/import presets
+15. Add ability to change hotkeys
+"""
 
 # Loading Screen
 class loading_thread(QThread):
@@ -84,11 +95,13 @@ class Dark_Sol(QMainWindow):
     def __init__(self):
         # Create main window
         super().__init__()
+        self.initalize_config()
         self.setWindowTitle("Dark Sol")
         self.setGeometry(100, 100, 400, 100)
         # Create Tabs
         self.tabs_widget = QTabWidget()
         self.main_tab = QWidget()
+        self.presets_tab = QWidget()
         self.calibrations_tab = QWidget()
         self.theme_tab = QWidget()
         self.settings_tab = QWidget()
@@ -96,6 +109,11 @@ class Dark_Sol(QMainWindow):
         self.start_button = QPushButton("Start")
         self.stop_button = QPushButton("Stop")
         self.status_label = QLabel("Status: Stopped")
+        # Create Presets Tab Elements
+        self.current_preset = config["current_preset"]
+        self.preset_selector = QComboBox()
+        self.presets_tab_scroller = QScrollArea()
+        self.presets_tab_content = QWidget()
         # Create Calibration Tab Elements
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
@@ -144,6 +162,7 @@ class Dark_Sol(QMainWindow):
         # Initialize Tabs
         self.setCentralWidget(self.tabs_widget)
         self.tabs_widget.addTab(self.main_tab, "Main")
+        self.tabs_widget.addTab(self.presets_tab, "Presets")
         self.tabs_widget.addTab(self.calibrations_tab, "Calibrations")
         self.tabs_widget.addTab(self.theme_tab, "Theme")
         self.tabs_widget.addTab(self.settings_tab, "Settings")
@@ -156,6 +175,31 @@ class Dark_Sol(QMainWindow):
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_tab_vbox.addLayout(main_tab_hbox)
         self.main_tab.setLayout(main_tab_vbox)
+        #Set Presets Tab Layout
+        self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
+        self.preset_selector.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
+        self.preset_selector.setMinimumHeight(52)
+
+        # Presets tab scoped styling (match Gui Template; does not affect other tabs)
+        self.presets_tab.setStyleSheet("""
+            QWidget { background-color: black; }
+            QLabel { color: cyan; font-size: 18px; }
+            QCheckBox { color: cyan; font-size: 14px; }
+            QScrollArea { border: 0px; }
+        """)
+
+        self.presets_tab_scroller.setFrameShape(QFrame.Shape.NoFrame)
+        self.presets_tab_scroller.setWidgetResizable(True)
+        self.presets_tab_scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.presets_tab_scroller.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.presets_tab_main_vbox = QVBoxLayout()
+        self.presets_tab_main_vbox.addWidget(self.preset_selector)
+        self.presets_tab_main_vbox.addWidget(self.presets_tab_scroller)
+        self.presets_tab.setLayout(self.presets_tab_main_vbox)
+        self.presets_tab_content_layout = QVBoxLayout(self.presets_tab_content)
+        self.presets_tab_content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.presets_tab_scroller.setWidget(self.presets_tab_content)
+        self.build_potions_ui()
         # Set Calibrations Tab Layout
         self.calibrations_tab_main_vbox = QVBoxLayout()
         self.calibrations_stack = QStackedWidget()
@@ -197,7 +241,7 @@ class Dark_Sol(QMainWindow):
         self.amount_box_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 30px;}")
         self.add_button_coordinates_selector.adjustSize()
         self.amount_box_coordinates_selector.adjustSize()
-        # Calibrations Page Setup
+        # Calibration Pages Setup
         self.calibrations_stack.addWidget(auto_calibration_page)       # index 0
         self.calibrations_stack.addWidget(semi_auto_calibration_page)  # index 1
         self.calibrations_stack.addWidget(manual_calibration_page)     # index 2
@@ -207,14 +251,15 @@ class Dark_Sol(QMainWindow):
         self.calibrations_tab.setLayout(self.calibrations_tab_main_vbox)
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
-        self.set_add_button_coordinates.clicked.connect(lambda: self.show_add_button_coordinates_selector())
-        self.set_amount_box_coordinates.clicked.connect(lambda: self.show_amount_box_coordinates_selector())
+        self.set_add_button_coordinates.clicked.connect(lambda: self.add_button_coordinates_selector.show())
+        self.set_amount_box_coordinates.clicked.connect(lambda: self.amount_box_coordinates_selector.show())
         self.find_add_button.clicked.connect(lambda: self.auto_find_image("add button.png", True, True, True))
         self.find_amount_box.clicked.connect(lambda: self.auto_find_image("amount box.png", True, True))
         self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True, bbox_required=True))
         self.find_craft_button.clicked.connect(lambda: self.auto_find_image("craft button.png", True))
         self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True))
         self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("heavenly potion potion selector button.png", True))
+        self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         #Status Label Setup
         self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowTransparentForInput)
         self.mini_status_widget.setStyleSheet("background-color: black; border: 2px solid cyan; border-radius: 6px;")
@@ -236,21 +281,14 @@ class Dark_Sol(QMainWindow):
             QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 30px;}
             QLabel {color: cyan; font-size: 50px;}
         """)
-        # Initialize Config
-        self.initalize_config()
         # Setup  Hotkeys
         self.start_button.clicked.connect(self.start_macro)
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
         
     def initalize_config(self):
-        global config
-
-        if CONFIG_PATH.exists():
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                config = json.load(f)
-        else:
-            config = {
+        global config, hidden_config
+        hidden_config = {
                     "positions": {
                         "add button 1": {"bbox": [757, 656, 837, 688], "center": [797, 672]},
                         "add button 2": {"bbox": [757, 711, 837, 743], "center": [797, 727]},
@@ -263,110 +301,404 @@ class Dark_Sol(QMainWindow):
                         "potion selection button": [1146, 460],
                         "search bar": [1137, 381],
                         "auto add button": [707, 618],
-                        "craft button": [573, 618]
+                        "craft button": [573, 618],
                     },
-                }
-            self.save_config(config)
+                    "current_preset": "Main",
+
+                    "item presets": {
+                        "Main": {
+                            "bound": {
+                                "buttons to check": ["add button 1", "add button 2"],
+                                "additional buttons to click": ["add button 4"],
+                                "crafting slots": 4,
+                                "instant craft": False,
+                                "enabled": True,
+                                "collapsed": True
+                            },
+                            "heavenly": {
+                                "buttons to check": ["add button 2", "add button 3"],
+                                "additional buttons to click": ["add button 1"],
+                                "crafting slots": 5,
+                                "instant craft": False,
+                                "enabled": True,
+                                "collapsed": True
+                            },
+                            "zeus": {
+                                "buttons to check": ["add button 3"],
+                                "additional buttons to click": ["add button 1", "add button 2"],
+                                "crafting slots": 5,
+                                "instant craft": False,
+                                "enabled": True,
+                                "collapsed": True
+                            },
+                            "poseidon": {
+                                "buttons to check": ["add button 2"],
+                                "additional buttons to click": ["add button 1"],
+                                "crafting slots": 4,
+                                "instant craft": False,
+                                "enabled": True,
+                                "collapsed": True
+                            },
+                            "hades": {
+                                "buttons to check": ["add button 2"],
+                                "additional buttons to click": ["add button 1"],
+                                "crafting slots": 4,
+                                "instant craft": False,
+                                "enabled": True,
+                                "collapsed": True
+                            },
+                            "warp": {
+                                "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
+                                "additional buttons to click": ["add button 1", "add button 2"],
+                                "crafting slots": 6,
+                                "instant craft": False,
+                                "enabled": False,
+                                "collapsed": False
+                            },
+                            "protected": True
+                        }
+                    }
+                    }
+                    
+        if CONFIG_PATH.exists():
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                config = json.load(f)
             
-    def save_config(self, config, ind=4):
+        else:
+            config = hidden_config
+        self.nice_config_save()
+
+    def nice_config_save(self, ind=4):
         S = (str, int, float, bool, type(None))
+
+        stack_ids = set()
 
         def d(o, l=0):
             p = " " * (ind * l)
             np = " " * (ind * (l + 1))
+
+            def dump_simple_list(vals):
+                return "[" + ", ".join(json.dumps(x) for x in vals) + "]"
+
             if isinstance(o, dict):
-                if not o:
-                    return "{}"
-                it = list(o.items())
-                if len(it) <= 2 and all(isinstance(k, str) for k, _ in it) and all(
-                    isinstance(v, S)
-                    or (isinstance(v, (list, tuple)) and len(v) <= 6 and all(isinstance(x, S) for x in v))
-                    for _, v in it
-                ):
-                    return "{" + ", ".join(
-                        f"{json.dumps(k)}: {json.dumps(list(v) if isinstance(v, tuple) else v)}" for k, v in it
-                    ) + "}"
-                return "{\n" + "\n".join(
-                    f"{np}{json.dumps(k)}: {d(v, l + 1)}{',' if i < len(it) - 1 else ''}" for i, (k, v) in enumerate(it)
-                ) + f"\n{p}}}"
+                oid = id(o)
+                stack_ids.add(oid)
+                try:
+                    if not o:
+                        return "{}"
+                    it = list(o.items())
+                    if len(it) <= 2 and all(isinstance(k, str) for k, _ in it) and all(
+                        isinstance(v, S)
+                        or (isinstance(v, (list, tuple)) and len(v) <= 6 and all(isinstance(x, S) for x in v))
+                        for _, v in it
+                    ):
+                        parts = []
+                        for k, v in it:
+                            if isinstance(v, (list, tuple)):
+                                parts.append(f"{json.dumps(k)}: {dump_simple_list(list(v))}")
+                            else:
+                                parts.append(f"{json.dumps(k)}: {json.dumps(v)}")
+                        return "{" + ", ".join(parts) + "}"
+                    return "{\n" + "\n".join(
+                        f"{np}{json.dumps(k)}: {d(v, l + 1)}{',' if i < len(it) - 1 else ''}" for i, (k, v) in enumerate(it)
+                    ) + f"\n{p}}}"
+                finally:
+                    stack_ids.discard(oid)
             if isinstance(o, (list, tuple)):
-                a = list(o)
-                if len(a) <= 6 and all(isinstance(x, S) for x in a):
-                    return json.dumps(a)
-                if not a:
-                    return "[]"
-                return "[\n" + "\n".join(
-                    f"{np}{d(v, l + 1)}{',' if i < len(a) - 1 else ''}" for i, v in enumerate(a)
-                ) + f"\n{p}]"
+                oid = id(o)
+                stack_ids.add(oid)
+                try:
+                    a = list(o)
+                    if len(a) <= 6 and all(isinstance(x, S) for x in a):
+                        return dump_simple_list(a)
+                    if not a:
+                        return "[]"
+                    return "[\n" + "\n".join(
+                        f"{np}{d(v, l + 1)}{',' if i < len(a) - 1 else ''}" for i, v in enumerate(a)
+                    ) + f"\n{p}]"
+                finally:
+                    stack_ids.discard(oid)
             return json.dumps(o)
 
+        text = d(config) + "\n"
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            f.write(d(config) + "\n")
+            f.write(text)
     
     def update_config(self, key, new_value):
         config[key] = new_value
-        self.save_config(config)
+        self.nice_config_save()
 
     global data
     data = {
-            "img_scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position_name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
-                                "amount box.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": ["amount box 1", "amount box 2", "amount box 3", "amount box 4"]},
-                                "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "auto add button"},
-                                "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "craft button"},
-                                "cauldren search bar.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "search bar"},
-                                    "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position_name": "potion selection button"},
+            "img scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
+                                "amount box.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": ["amount box 1", "amount box 2", "amount box 3", "amount box 4"]},
+                                "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "auto add button"},
+                                "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "craft button"},
+                                "cauldren search bar.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "search bar"},
+                                    "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "potion selection button"},
                             },
-            "item_presets": {
-                        "bound": {
-                            "name to search": "bound",
-                            "buttons to check": ["add button 1", "add button 2"],
-                            "additional buttons to click": ["add button 4",],
-                            "crafting slots": 4,
-                            "instant craft": False
+            "item data": {
+                    "bound": {
+                        "name to search": "bound",
+                        "button names": {
+                            "add button 1": "Bounded",
+                            "add button 2": "Permafrost",
+                            "add button 3": "Lost Soul",
+                            "add button 4": "Lucky Potion",
                         },
-                        "heavenly": {
-                            "name to search": "heavenly",
-                            "buttons to check": ["add button 2", "add button 3"],
-                            "additional buttons to click" : ["add button 1",],
-                            "crafting slots": 5,
-                            "instant craft": False
+                        "amounts to add": {"add button 2": 3, "add button 4": 100},
+                        "crafting slots": 4,
+                    },
+                    "heavenly": {
+                        "name to search": "heavenly",
+                        "button names": {
+                            "add button 1": "Lucky Potion",
+                            "add button 2": "Celestial",
+                            "add button 3": "Exotic",
+                            "add button 4": "Powered",
+                            "add button 5": "Quartz",
                         },
-                        "zeus": {
-                            "name to search": "zeus",
-                            "buttons to check": ["add button 3",],
-                            "additional buttons to click": ["add button 1", "add button 2"],
-                            "crafting slots": 5,
-                            "instant craft": False
+                        "amounts to add": {"add button 1": 250, "add button 2": 2},
+                        "crafting slots": 5,
+                    },
+                    "zeus": {
+                        "name to search": "zeus",
+                        "button names": {
+                            "add button 1": "Lucky Potion",
+                            "add button 2": "Speed Potion",
+                            "add button 3": "Zeus",
+                            "add button 4": "Stormal",
+                            "add button 5": "Wind",
                         },
-                        "poseidon": {
-                            "name to search": "poseidon",
-                            "buttons to check": ["add button 2",],
-                            "additional buttons to click": ["add button 1",],
-                            "crafting slots": 4,
-                            "instant craft": False
+                        "amounts to add": {"add button 1": 25, "add button 2": 25},
+                        "crafting slots": 5,
+                    },
+                    "poseidon": {
+                        "name to search": "poseidon",
+                        "button names": {
+                            "add button 1": "Speed Potion",
+                            "add button 2": "Poseidon",
+                            "add button 3": "Nautilus",
+                            "add button 4": "Aquatic",
                         },
-                        "hades": {
-                            "name to search": "hades",
-                            "buttons to check": ["add button 2",],
-                            "additional buttons to click": ["add button 1",],
-                            "crafting slots": 4,
-                            "instant craft": False
+                        "amounts to add": {"add button 1": 50},
+                        "crafting slots": 4,
+                    },
+                    "hades": {
+                        "name to search": "hades",
+                        "button names": {
+                            "add button 1": "Lucky Potion",
+                            "add button 2": "Hades",
+                            "add button 3": "Diaboli",
+                            "add button 4": "Bleeding"
                         },
-                        "warp": {
-                            "name to search": "warp",
-                            "buttons to check": ["add button 4", "add button 5", "add button 6"],
-                            "additional buttons to click": ["add button 1", "add button 2"],
-                            "crafting slots": 6,
-                            "instant craft": False
-                        }
-                    }
+                        "amounts to add": {"add button 1": 50},
+                        "crafting slots": 4,
+                    },
+                    "warp": {
+                        "name to search": "warp",
+                        "button names": {
+                            "add button 1": "<PLACEHOLDER NAME>",  # PLACEHOLDER: replace
+                            "add button 2": "<PLACEHOLDER NAME>",  # PLACEHOLDER: replace
+                            "add button 3": "<PLACEHOLDER NAME>",  # PLACEHOLDER: replace
+                            "add button 4": "<PLACEHOLDER NAME>",  # PLACEHOLDER: replace
+                            "add button 5": "<PLACEHOLDER NAME>",  # PLACEHOLDER: replace
+                            "add button 6": "<PLACEHOLDER NAME>"  # PLACEHOLDER: replace
+                        },
+                        "amounts to add": {
+
+                        },
+                        "crafting slots": 6,
+                    },
+                }
                 }
 
-    def show_add_button_coordinates_selector(self, show=True):
-        self.add_button_coordinates_selector.setVisible(show)
-    
-    def show_amount_box_coordinates_selector(self, show=True):
-        self.amount_box_coordinates_selector.setVisible(show)
+    def create_new_preset(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Create New Preset")
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(QLabel("Set Preset Name:"))
+
+        name_edit = QLineEdit()
+        name_edit.setStyleSheet("color: cyan; background: #111;")
+        layout.addWidget(name_edit)
+
+        buttons = QDialogButtonBox()
+        buttons.addButton(QDialogButtonBox.StandardButton.Ok)
+        buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            self.preset_selector.setCurrentText(config.get("current_preset", ""))
+            return
+
+        preset_name = name_edit.text().strip()
+        if not preset_name or preset_name == None or "":
+            QMessageBox.warning(self, "Invalid Name", "Preset name cannot be empty.")
+            self.preset_selector.setCurrentText(config.get("current_preset", ""))
+            return
+        if preset_name in config["item presets"].keys():
+            QMessageBox.warning(self, "Name Exists", "A preset with that name already exists.")
+            self.preset_selector.setCurrentText(config.get("current_preset", ""))
+            return
+
+        source_key = config.get("current_preset")
+        if source_key not in config.get("item presets", {}):
+            presets = list(config.get("item presets", {}).keys())
+            source_key = presets[0] if presets else None
+
+        new_preset_value = deepcopy(config["item presets"][source_key]) if source_key else {}
+        config.setdefault("item presets", {})[preset_name] = new_preset_value
+        self.switch_preset(preset_name)
+
+    def switch_preset(self, preset_name):
+        if config.get("current_preset") == preset_name:
+            return
+        config["current_preset"] = preset_name
+        self.current_preset = preset_name
+        self.nice_config_save()
+        self.preset_selector.blockSignals(True)
+        self.preset_selector.clear()
+        self.preset_selector.addItems(list(config.get("item presets", {}).keys()) + ["Create New Preset"])
+        self.preset_selector.setCurrentText(preset_name)
+        self.preset_selector.blockSignals(False)
+
+    def build_potions_ui(self):
+        def checkbox_into_toggler(checkbox: QCheckBox):
+            checkbox.setStyleSheet("""
+                QCheckBox { color: cyan; font-size: 16px; spacing: 8px; }
+                QCheckBox::indicator { width: 44px; height: 22px; border-radius: 11px; }
+                QCheckBox::indicator:unchecked { background-color: #222; border: 1px solid cyan; }
+                QCheckBox::indicator:checked { background-color: #0aa; border: 1px solid cyan; }
+            """)
+
+        def on_potion_toggle_changed(checked: bool):
+            sender = self.sender()
+            if sender is None:
+                return
+            potion = sender.property("potion")
+            config_key = sender.property("config_key")
+            config["item presets"][self.current_preset][potion][config_key] = bool(checked)
+            self.nice_config_save()
+
+        def on_potion_list_toggle_changed(checked: bool):
+            sender = self.sender()
+            if sender is None:
+                return
+            potion = sender.property("potion")
+            list_key = sender.property("list_key")
+            btn = sender.property("btn")
+
+            items = config["item presets"][self.current_preset][potion][list_key]
+
+            if checked:
+                if btn not in items:
+                    items.append(btn)
+            else:
+                if btn in items:
+                    items.remove(btn)
+
+            def button_order_key(name: str):
+                last = name.rsplit(" ", 1)[-1]
+                return (int(last), name)
+            
+            items.sort(key=button_order_key)
+            self.nice_config_save()
+
+        for potion in data["item data"].keys():
+            potion_config = config["item presets"][self.current_preset][potion]
+            potion_data = data["item data"][potion]
+            # Potion Section
+            potion_section = QWidget()
+            QVLayout = QVBoxLayout(potion_section)
+            QVLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            potion_section.setStyleSheet("QWidget { background: #0b0b0b; border: 1px solid #033; border-radius: 8px; }")
+
+            # Header (match Gui Template)
+            potion_header = QWidget()
+            potion_header.setStyleSheet("QWidget { background: #111; border: 0px; }")
+            QHLayout = QHBoxLayout(potion_header)
+            QHLayout.setContentsMargins(0, 0, 0, 0)
+
+            title = QLabel(potion.capitalize())
+            title.setStyleSheet("color: cyan; font-size: 24px;")
+
+            instant_craft_checkbox = QCheckBox("Instant Craft")
+            instant_craft_checkbox.setChecked(bool(potion_config["instant craft"]))
+            checkbox_into_toggler(instant_craft_checkbox)
+            instant_craft_checkbox.setProperty("potion", potion)
+            instant_craft_checkbox.setProperty("config_key", "instant craft")
+            instant_craft_checkbox.toggled.connect(on_potion_toggle_changed)
+
+            enabled_checkbox = QCheckBox("Enabled")
+            enabled_checkbox.setChecked(bool(potion_config["enabled"]))
+            checkbox_into_toggler(enabled_checkbox)
+            enabled_checkbox.setProperty("potion", potion)
+            enabled_checkbox.setProperty("config_key", "enabled")
+            enabled_checkbox.toggled.connect(on_potion_toggle_changed)
+
+            QHLayout.addWidget(title)
+            QHLayout.addStretch()
+            QHLayout.addWidget(instant_craft_checkbox)
+            QHLayout.addWidget(enabled_checkbox)
+            QVLayout.addWidget(potion_header)
+            # Body
+            body = QWidget()
+            body.setStyleSheet("QWidget { background: #0f0f0f; border: 0px; }")
+            columns_QH_Layout = QHBoxLayout(body)
+            columns_QH_Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            columns_QH_Layout.setContentsMargins(2, 2, 2, 2)
+            columns_QH_Layout.setSpacing(10)
+
+            left_column = QWidget()
+            left_column_QV_Layout = QVBoxLayout(left_column)
+            left_column_QV_Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            left_column_QV_Layout.setContentsMargins(0, 0, 0, 0)
+            left_column_QV_Layout.setSpacing(4)
+            left_title = QLabel("Buttons To Check")
+            left_title.setStyleSheet("color: cyan; font-size: 20px;")
+            left_column_QV_Layout.addWidget(left_title)
+
+            right_column = QWidget()
+            right_column_QV_Layout = QVBoxLayout(right_column)
+            right_column_QV_Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            right_column_QV_Layout.setContentsMargins(0, 0, 0, 0)
+            right_column_QV_Layout.setSpacing(4)
+            right_title = QLabel("Additional Buttons To Click")
+            right_title.setStyleSheet("color: cyan; font-size: 20px;")
+            right_column_QV_Layout.addWidget(right_title)
+
+            slots = int(potion_config["crafting slots"])
+            for i in range(1, slots + 1):
+                btn = f"add button {i}"
+                label = potion_data["button names"][btn]
+
+                cb1 = QCheckBox(label)
+                cb1.setStyleSheet("color: cyan; font-size: 14px;")
+                cb1.setChecked(btn in potion_config["buttons to check"])
+                cb1.setProperty("potion", potion)
+                cb1.setProperty("list_key", "buttons to check")
+                cb1.setProperty("btn", btn)
+                cb1.toggled.connect(on_potion_list_toggle_changed)
+                left_column_QV_Layout.addWidget(cb1)
+
+                cb2 = QCheckBox(label)
+                cb2.setStyleSheet("color: cyan; font-size: 14px;")
+                cb2.setChecked(btn in potion_config["additional buttons to click"])
+                cb2.setProperty("potion", potion)
+                cb2.setProperty("list_key", "additional buttons to click")
+                cb2.setProperty("btn", btn)
+                cb2.toggled.connect(on_potion_list_toggle_changed)
+                right_column_QV_Layout.addWidget(cb2)
+
+            columns_QH_Layout.addWidget(left_column)
+            columns_QH_Layout.addStretch(1)
+            columns_QH_Layout.addWidget(right_column)
+            QVLayout.addWidget(body)
+
+            self.presets_tab_content_layout.addWidget(potion_section)
 
     def switch_calibration_mode(self):
         if self.calibration_mode == "auto":
@@ -407,7 +739,7 @@ class Dark_Sol(QMainWindow):
 
         pixels = np.asarray(img, dtype=np.uint8)
         mask = np.zeros((pixels.shape[0], pixels.shape[1]), dtype=bool)
-        # For each target, parse it into (r,g,b) and OR its matches into the mask.
+
         for target in targets:
             if isinstance(target, str):
                 clean = target.strip()
@@ -436,14 +768,14 @@ class Dark_Sol(QMainWindow):
                     return
                 if bbox != None:
                     config["positions"][position_name] = {"bbox": bbox, "center": center}
-                    self.save_config(config)
+                    self.nice_config_save()
                 else:
                     config["positions"][position_name] = center
-                    self.save_config(config)
+                    self.nice_config_save()
 
             def rescale_template(template):
-                base_scale = data["img_scales"][template]["scale"]   
-                base_resolution =data["img_scales"][template]["resolution"]
+                base_scale = data["img scales"][template]["scale"]   
+                base_resolution =data["img scales"][template]["resolution"]
 
                 user32 = ctypes.windll.user32
                 gdi32 = ctypes.windll.gdi32
@@ -483,7 +815,7 @@ class Dark_Sol(QMainWindow):
                             self.log(f"  bbox : {bbox}, center: {center}")
                             ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
                             all_matches_screen.show()
-                            save_position(data["img_scales"][template]["position_name"], center, bbox if bbox_required else None)
+                            save_position(data["img scales"][template]["position name"], center, bbox if bbox_required else None)
                         else:
                             self.log(f"No match found for template: {template_path}")
 
@@ -507,7 +839,7 @@ class Dark_Sol(QMainWindow):
                                 self.log(count)
                                 multi_image_template_find(match)
                                 single_match_screen.show()
-                                save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_required else None)
+                                save_position(data["img scales"][template]["position name"][count], center, bbox if bbox_required else None)
                                 
                         elif add_start_index != None:
                             for count, match in enumerate(sorted_matches, start=add_start_index[0]):
@@ -516,7 +848,7 @@ class Dark_Sol(QMainWindow):
                                 multi_image_template_find(match)
                                 if count in add_start_index[1]:
                                     single_match_screen.show()
-                                    save_position(data["img_scales"][template]["position_name"][count], center, bbox if bbox_required else None)
+                                    save_position(data["img scales"][template]["position name"][count], center, bbox if bbox_required else None)
                         
                 except (pyscreeze_ImageNotFoundException, pyautogui.ImageNotFoundException):
                     self.log(f"No matches found for template: {template_path}")
@@ -602,16 +934,27 @@ class Dark_Sol(QMainWindow):
         def add_to_button(button_to_add_to):
             time.sleep(slowdown)
             if int(button_to_add_to[-1]) < 4:
-                self.move_and_click(config["positions"][button_to_add_to]["center"], False)
-                self.log("Moved to", button_to_add_to, "center")
+                self.move_and_click(config[f"amount box {int(button_to_add_to[-1])}"], False)
+                self.log("Moved to", "amount box", button_to_add_to[-1])
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up")
                 time.sleep(slowdown)
                 mkey.left_click()
+                self.log("Amount box clicked to focus")
+                time.sleep(slowdown)
+                if button_to_add_to in data["item presets"][item]["amounts to add"]:
+                    keyboard.Controller().type(str(data["item presets"][item]["amounts to add"][button_to_add_to]))
+                    self.log(f"Typed amount: {data['item_presets'][item]['amounts to add'][button_to_add_to]}")
+                else:
+                    keyboard.Controller().type("1")
+                    self.log("Typed amount: 1")
+                time.sleep(slowdown)
+                self.move_and_click(config["positions"][button_to_add_to]["center"])
+                self.log(f"{button_to_add_to} clicked")
             elif int(button_to_add_to[-1]) >= 4:
-                self.move_and_click(config["positions"]["add button 4"]["center"], False)
-                self.log("Moved to add button ((4)) center")
+                self.move_and_click(config["positions"]["amount box 4"], False)
+                self.log("Moved to amount box ((4)) center")
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up")
@@ -625,7 +968,15 @@ class Dark_Sol(QMainWindow):
                     self.log("Scrolled down to slot", x + 1)
                 time.sleep(slowdown)
                 mkey.left_click()
-                self.log(f"{button_to_add_to} clicked")
+                self.log("Amount box clicked to focus")
+                time.sleep(slowdown)
+                if button_to_add_to in data["item presets"][item]["amounts to add"]:
+                    keyboard.Controller().type(str(data["item presets"][item]["amounts to add"][button_to_add_to]))
+                    self.log(f"Typed amount: {data['item_presets'][item]['amounts to add'][button_to_add_to]}")
+                else:
+                    keyboard.Controller().type("1")
+                    self.log("Typed amount: 1")
+                time.sleep(slowdown)
 
         def check_button(button_to_check):
             img = None
@@ -673,8 +1024,8 @@ class Dark_Sol(QMainWindow):
                 self.move_and_click(config["positions"]["search bar"])
                 self.log("Search bar clicked")
                 time.sleep(slowdown)
-                keyboard.Controller().type(data["item_presets"][potion]["name to search"])
-                self.log("Item searched:", data["item_presets"][potion]["name to search"].capitalize())
+                keyboard.Controller().type(data["item presets"][potion]["name to search"])
+                self.log("Item searched:", data["item presets"][potion]["name to search"].capitalize())
                 time.sleep(slowdown)
                 self.move_and_click(config["positions"]["potion selection button"], False)
                 self.log("Moved to potion selection button")
@@ -690,7 +1041,7 @@ class Dark_Sol(QMainWindow):
             if item not in self.auto_add_waitlist and self.current_auto_add_potion != item:
                 search_for_potion(item)
 
-                for button_to_add_to in data["item_presets"][item]["buttons to check"]:
+                for button_to_add_to in data["item presets"][item]["buttons to check"]:
                     add_to_button(button_to_add_to)
                     time.sleep(slowdown)
 
@@ -698,7 +1049,7 @@ class Dark_Sol(QMainWindow):
                 self.log(f"{item} set to ready")
                 time.sleep(slowdown)
                 
-                for button_to_check in data["item_presets"][item]["buttons to check"]:
+                for button_to_check in data["item presets"][item]["buttons to check"]:
                     item_ready = check_button(button_to_check)
                     time.sleep(slowdown)
                     if not item_ready:
@@ -708,11 +1059,11 @@ class Dark_Sol(QMainWindow):
                 if item_ready:
                     self.log(f"Clicking additional buttons for {item}")
                     time.sleep(slowdown)
-                    for button_to_click in data["item_presets"][item]["additional buttons to click"]:
+                    for button_to_click in data["item presets"][item]["additional buttons to click"]:
                         add_to_button(button_to_click)
                         time.sleep(slowdown)
 
-                    if not data["item_presets"][item]["instant craft"]:
+                    if not data["item presets"][item]["instant craft"]:
                         if self.current_auto_add_potion == None:
                             if self.find_pixels_with_color("#C2FFA6", "#C1FEA5" ,bbox=config["positions"]["auto add button"]["bbox"]) == 0:
                                 self.move_and_click(config["positions"]["auto add button"]["center"])
@@ -736,7 +1087,7 @@ class Dark_Sol(QMainWindow):
                 self.log("Checking All Buttons")
                 time.sleep(slowdown)
 
-                for slot in range(1, data["item_presets"][item]["crafting slots"] + 1):  # ignore manual click slots
+                for slot in range(1, data["item presets"][item]["crafting slots"] + 1):  # ignore manual click slots
                     if not check_button("add button " + str(slot)):
                         time.sleep(slowdown)
                         item_ready = False
@@ -756,9 +1107,10 @@ class Dark_Sol(QMainWindow):
                         time.sleep(slowdown)
                         self.current_auto_add_potion = self.auto_add_waitlist.pop(0)
                            
-        for item in data["item_presets"].keys():
-            if item != "warp":
-                macro_loop_iteration(item)
+        for item in data["item data"].keys():
+                if config["item presets"][item]["enabled"]:
+                    macro_loop_iteration(item)
+                
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
