@@ -111,6 +111,8 @@ class Dark_Sol(QMainWindow):
         # Create Presets Tab Elements
         self.current_preset = config["current_preset"]
         self.preset_selector = QComboBox()
+        self.rename_preset_button = QPushButton("Rename")
+        self.delete_preset_button = QPushButton("Delete")
         self.presets_tab_scroller = QScrollArea()
         self.presets_tab_content = QWidget()
         # Create Calibration Tab Elements
@@ -178,6 +180,13 @@ class Dark_Sol(QMainWindow):
         self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
         self.preset_selector.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
         self.preset_selector.setMinimumHeight(52)
+
+        self.rename_preset_button.setMinimumHeight(52)
+        self.rename_preset_button.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
+
+        self.delete_preset_button.setMinimumHeight(52)
+        self.delete_preset_button.setStyleSheet("color: red; background: #111; font-size: 24px; padding: 6px; border: 1px solid red;")
+
         self.preset_selector.blockSignals(True)
         self.preset_selector.setCurrentText(self.current_preset)
         self.preset_selector.blockSignals(False)
@@ -192,7 +201,16 @@ class Dark_Sol(QMainWindow):
         self.presets_tab_scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.presets_tab_scroller.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.presets_tab_main_vbox = QVBoxLayout()
-        self.presets_tab_main_vbox.addWidget(self.preset_selector)
+
+        presets_header = QWidget()
+        presets_header_layout = QHBoxLayout(presets_header)
+        presets_header_layout.setContentsMargins(0, 0, 0, 0)
+        presets_header_layout.setSpacing(10)
+        presets_header_layout.addWidget(self.preset_selector, 1)
+        presets_header_layout.addWidget(self.rename_preset_button)
+        presets_header_layout.addWidget(self.delete_preset_button)
+
+        self.presets_tab_main_vbox.addWidget(presets_header)
         self.presets_tab_main_vbox.addWidget(self.presets_tab_scroller)
         self.presets_tab.setLayout(self.presets_tab_main_vbox)
         self.presets_tab_content_layout = QVBoxLayout(self.presets_tab_content)
@@ -259,6 +277,8 @@ class Dark_Sol(QMainWindow):
         self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True))
         self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("heavenly potion potion selector button.png", True))
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
+        self.rename_preset_button.clicked.connect(self.rename_preset)
+        self.delete_preset_button.clicked.connect(self.delete_preset)
         #Status Label Setup
         self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowTransparentForInput)
         self.mini_status_widget.setStyleSheet("background-color: black; border: 2px solid cyan; border-radius: 6px;")
@@ -354,7 +374,7 @@ class Dark_Sol(QMainWindow):
                                 "enabled": False,
                                 "collapsed": False
                             },
-                            "protected": True
+                            "protected": False
                         }
                     }
                     }
@@ -552,15 +572,127 @@ class Dark_Sol(QMainWindow):
         config.setdefault("item presets", {})[preset_name] = new_preset_value
         self.switch_preset(preset_name)
 
+    def rename_preset(self):
+        old_name = self.preset_selector.currentText()
+
+        if old_name not in config.get("item presets", {}):
+            QMessageBox.warning(self, "Missing Preset", "That preset no longer exists.")
+            return
+
+        if config["item presets"][old_name].get("protected"):
+            QMessageBox.warning(self, "Protected Preset", "This preset cannot be renamed.")
+            return
+
+        while True:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Rename Preset")
+            layout = QVBoxLayout(dialog)
+            layout.addWidget(QLabel(f"Rename preset '{old_name}' to:"))
+
+            name_edit = QLineEdit()
+            name_edit.setText(old_name)
+            name_edit.setStyleSheet("color: cyan; background: #111;")
+            layout.addWidget(name_edit)
+
+            buttons = QDialogButtonBox()
+            buttons.addButton(QDialogButtonBox.StandardButton.Ok)
+            buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(buttons)
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+
+            new_name = name_edit.text().strip()
+            if new_name == "" or new_name is None:
+                QMessageBox.warning(self, "Invalid Name", "Preset name cannot be empty.")
+                continue
+            if new_name == old_name:
+                return
+            if new_name in config.get("item presets", {}):
+                QMessageBox.warning(self, "Name Exists", "A preset with that name already exists.")
+                continue
+            break
+
+        config["item presets"][new_name] = config["item presets"].pop(old_name)
+        config["current_preset"] = new_name
+        self.current_preset = new_name
+
+        self.nice_config_save()
+        self.preset_selector.blockSignals(True)
+        self.preset_selector.clear()
+        self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
+        self.preset_selector.setCurrentText(config["current_preset"])
+        self.preset_selector.blockSignals(False)
+        self.rebuild_potions_ui()
+
+    def delete_preset(self):
+        preset_name = self.preset_selector.currentText()
+
+        if config["item presets"][preset_name].get("protected"):
+            QMessageBox.warning(self, "Protected Preset", "This preset is protected and cannot be deleted.")
+            return
+
+        remaining_presets = [p for p in config["item presets"].keys() if p != preset_name]
+        if len(remaining_presets) == 0:
+            QMessageBox.warning(self, "Cannot Delete", "You must keep at least one preset.")
+            return
+
+        while True:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Delete Preset")
+            layout = QVBoxLayout(dialog)
+            warning_label = QLabel(f'Are you sure you want to delete "{preset_name}" this cannot be undone.')
+            warning_label.setStyleSheet("color: red; font-size: 18px;")
+            layout.addWidget(warning_label)
+            label = QLabel("Select the preset you want to switch to:")
+            label.setStyleSheet("font-size: 18px;")
+            layout.addWidget(label)
+            next_selector = QComboBox()
+            next_selector.setStyleSheet("color: cyan; background: #111; font-size: 18px; padding: 6px;")
+            next_selector.addItem("-- Select preset --")
+            next_selector.addItems(remaining_presets)
+            layout.addWidget(next_selector)
+            buttons = QDialogButtonBox()
+            delete_button = QPushButton("Delete")
+            delete_button.setStyleSheet("color: red; border: 1px solid red;")
+            buttons.addButton(delete_button, QDialogButtonBox.ButtonRole.AcceptRole)
+            buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(buttons)
+
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+
+            next_preset = next_selector.currentText()
+
+            if next_preset == "-- Select preset --":
+                QMessageBox.warning(self, "Select Preset", "Select the preset you want to switch to first.")
+                continue
+
+            config["current_preset"] = next_preset
+            self.current_preset = next_preset
+            config["item presets"].pop(preset_name)
+            break
+
+        self.nice_config_save()
+        self.preset_selector.blockSignals(True)
+        self.preset_selector.clear()
+        self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
+        self.preset_selector.setCurrentText(config["current_preset"])
+        self.preset_selector.blockSignals(False)
+        self.rebuild_potions_ui()
+
     def switch_preset(self, preset_name):
-        if config.get("current_preset") == preset_name:
+        if config["current_preset"] == preset_name:
             return
         config["current_preset"] = preset_name
         self.current_preset = preset_name
         self.nice_config_save()
         self.preset_selector.blockSignals(True)
         self.preset_selector.clear()
-        self.preset_selector.addItems(list(config.get("item presets", {}).keys()) + ["Create New Preset"])
+        self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
         self.preset_selector.setCurrentText(preset_name)
         self.preset_selector.blockSignals(False)
 
