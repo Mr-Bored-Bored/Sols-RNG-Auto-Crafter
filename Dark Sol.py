@@ -326,10 +326,10 @@ class Dark_Sol(QMainWindow):
                         "auto add button": [707, 618],
                         "craft button": [573, 618],
                     },
-                    "current_preset": "Main",
+                    "current_preset": "Preset 1",
 
                     "item presets": {
-                        "Main": {
+                        "Preset 1": {
                             "bound": {
                                 "buttons to check": ["add button 1", "add button 2"],
                                 "additional buttons to click": ["add button 4"],
@@ -378,7 +378,6 @@ class Dark_Sol(QMainWindow):
                                 "enabled": False,
                                 "collapsed": False
                             },
-                            "protected": False
                         }
                     }
                     }
@@ -554,38 +553,30 @@ class Dark_Sol(QMainWindow):
         layout.addWidget(buttons)
 
         if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.preset_selector.setCurrentText(config.get("current_preset", ""))
+            self.preset_selector.setCurrentText(config["current_preset"])
             return
 
         preset_name = name_edit.text().strip()
         if not preset_name or preset_name == None or "":
             QMessageBox.warning(self, "Invalid Name", "Preset name cannot be empty.")
-            self.preset_selector.setCurrentText(config.get("current_preset", ""))
+            self.preset_selector.setCurrentText(config["current_preset"])
             return
         if preset_name in config["item presets"].keys():
             QMessageBox.warning(self, "Name Exists", "A preset with that name already exists.")
-            self.preset_selector.setCurrentText(config.get("current_preset", ""))
+            self.preset_selector.setCurrentText(config["current_preset"])
             return
 
-        source_key = config.get("current_preset")
-        if source_key not in config.get("item presets", {}):
-            presets = list(config.get("item presets", {}).keys())
+        source_key = config["current_preset"]
+        if source_key not in config["item presets"]:
+            presets = list(config["item presets"].keys())
             source_key = presets[0] if presets else None
 
-        new_preset_value = deepcopy(config["item presets"][source_key]) if source_key else {}
-        config.setdefault("item presets", {})[preset_name] = new_preset_value
+        new_preset_value = deepcopy(config["item presets"][source_key])
+        config["item presets"][preset_name] = new_preset_value
         self.switch_preset(preset_name)
 
     def rename_preset(self):
         old_name = self.preset_selector.currentText()
-
-        if old_name not in config.get("item presets", {}):
-            QMessageBox.warning(self, "Missing Preset", "That preset no longer exists.")
-            return
-
-        if config["item presets"][old_name].get("protected"):
-            QMessageBox.warning(self, "Protected Preset", "This preset cannot be renamed.")
-            return
 
         while True:
             dialog = QDialog(self)
@@ -613,7 +604,7 @@ class Dark_Sol(QMainWindow):
                 continue
             if new_name == old_name:
                 return
-            if new_name in config.get("item presets", {}):
+            if new_name in config["item presets"].keys():
                 QMessageBox.warning(self, "Name Exists", "A preset with that name already exists.")
                 continue
             break
@@ -632,10 +623,6 @@ class Dark_Sol(QMainWindow):
 
     def delete_preset(self):
         preset_name = self.preset_selector.currentText()
-
-        if config["item presets"][preset_name].get("protected"):
-            QMessageBox.warning(self, "Protected Preset", "This preset is protected and cannot be deleted.")
-            return
 
         remaining_presets = [p for p in config["item presets"].keys() if p != preset_name]
         if len(remaining_presets) == 0:
@@ -839,6 +826,7 @@ class Dark_Sol(QMainWindow):
             QHLayout.addWidget(instant_craft_checkbox)
             QHLayout.addWidget(enabled_checkbox)
             QHLayout.addWidget(collapse_button)
+            QHLayout.setContentsMargins(6, 6, 6, 6)
             QVLayout.addWidget(potion_header)
             # Body
             body = QWidget()
