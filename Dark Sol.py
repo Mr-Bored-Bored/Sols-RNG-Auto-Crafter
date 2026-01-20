@@ -162,7 +162,7 @@ class Dark_Sol(QMainWindow):
         self.worker = None
         self.init_ui()
         self.status_signal.connect(self.update_status)
-        self.macro_stopped_signal.connect(self._on_macro_stopped)
+        self.macro_stopped_signal.connect(self.on_macro_stopped)
         
     def init_ui(self):
         # Initialize Tabs
@@ -1093,13 +1093,13 @@ class Dark_Sol(QMainWindow):
         self.mini_status_widget.show()
         self.update_status("Running")
         self.run_event.set()
-        self.worker = threading.Thread(target=self._macro_worker, daemon=True)
+        self.worker = threading.Thread(target=self.macro_worker, daemon=True)
         self.worker.start()
 
     def stop_macro(self):
         self.run_event.clear()
 
-    def _macro_worker(self):
+    def macro_worker(self):
         while self.run_event.is_set():
             self.main_macro_loop()
             if not self.run_event.wait(0.1):
@@ -1117,7 +1117,7 @@ class Dark_Sol(QMainWindow):
             self.mini_status_label.adjustSize()
             self.mini_status_widget.adjustSize()
 
-    def _on_macro_stopped(self):
+    def on_macro_stopped(self):
         self.status_signal.emit("Stopped")
         self.mini_status_widget.hide()
         
@@ -1133,7 +1133,7 @@ class Dark_Sol(QMainWindow):
             elif not click:
                 mkey.move_to(*position)
 
-    def main_macro_loop(self, slowdown=0.01):
+    def main_macro_loop(self, slowdown=0.01, slowdown2=0.1):
         def add_to_button(button_to_add_to):
             time.sleep(slowdown)
             if int(button_to_add_to[-1]) < 4:
@@ -1194,7 +1194,7 @@ class Dark_Sol(QMainWindow):
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up")
-                time.sleep(slowdown)
+                time.sleep(slowdown2)
                 img = ImageGrab.grab(config["positions"][button_to_check]["bbox"])
                 self.log(button_to_check, "image captured")
                 time.sleep(slowdown)
@@ -1204,7 +1204,7 @@ class Dark_Sol(QMainWindow):
                 time.sleep(slowdown)
                 pyautogui.scroll(2000)
                 self.log("Scrolled up")
-                time.sleep(slowdown)
+                time.sleep(slowdown2)
                 pyautogui.scroll(-18)
                 self.log("Scrolled down to slot 4")
                 time.sleep(slowdown)
@@ -1220,7 +1220,7 @@ class Dark_Sol(QMainWindow):
                 raise Exception("Image capture failed in check_button")
             for t in reader.readtext(np.array(img), detail=0):
                 self.log(f"Detected text for {button_to_check}:", t)
-                if not t == "":
+                if t != "":
                     self.log("Item not ready, 'Add' detected.")
                     return False
             self.log("No 'Add' detected. for", button_to_check)
@@ -1306,6 +1306,7 @@ class Dark_Sol(QMainWindow):
                     time.sleep(slowdown)
                     if len(self.auto_add_waitlist) > 0:
                         search_for_potion(self.auto_add_waitlist[0])
+                        time.sleep(slowdown2)
                         if self.find_pixels_with_color("#C2FFA6", "#C1FEA5" ,bbox=config["positions"]["auto add button"]["bbox"]) == 0:
                             self.move_and_click(config["positions"]["auto add button"]["center"])
                             self.log("Clicked auto add button")
