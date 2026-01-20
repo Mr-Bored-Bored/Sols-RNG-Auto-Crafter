@@ -29,8 +29,7 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 3. Make confidence for template find be specific per template
 4. Seperate log and print statements
 5. Seperate logs(status updates) and print statements
-#Mini Status Label
-5. Add multi layers to mini status (General status / What it is currently doing) 
+#Mini Status Label 
 6. Make Mini Status Label movable (when moving make it show largest size)
 7. Make Mini Status Label centered so it doesnt move as much
 
@@ -340,7 +339,7 @@ class Dark_Sol(QMainWindow):
                         "auto add button": {"bbox": [646, 600, 768, 636], "center": [707, 618]},
                         "craft button": [573, 618],
                     },
-                    "current_preset": "Preset 1",
+                    "current_preset": "Main",
 
                     "item presets": {
                             "Main": {
@@ -466,13 +465,54 @@ class Dark_Sol(QMainWindow):
 
     global data
     data = {
-            "img scales": {"add button.png": {"scale": 1.25, "resolution": (1920, 1080), "position name": ["add button 1", "add button 2", "add button 3", "add button 4"]},
-                                "amount box.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": ["amount box 1", "amount box 2", "amount box 3", "amount box 4"]},
-                                "auto add button.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "auto add button"},
-                                "craft button.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "craft button"},
-                                "cauldren search bar.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "search bar"},
-                                    "heavenly potion potion selector button.png": {"scale": 1.25, "resolution": (1920, 1200), "position name": "potion selection button"},
-                            },
+            "img data": {
+                    "add button.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1080),
+                        "confidence": 0.75,
+                        "config position name": [
+                            "add button 1",
+                            "add button 2",
+                            "add button 3",
+                            "add button 4"
+                            ]
+                        },
+                    "amount box.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1200),
+                        "confidence": 0.5,
+                        "config position name": [
+                            "amount box 1",
+                            "amount box 2",
+                            "amount box 3",
+                            "amount box 4"
+                            ]
+                        },
+                    "auto add button.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1200),
+                        "confidence": 0.75,
+                        "config position name": "auto add button"
+                        },
+                    "craft button.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1200),
+                        "confidence": 0.75,
+                        "config position name": "craft button"
+                        },
+                    "cauldren search bar.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1200),
+                        "confidence": 0.75,
+                        "config position name": "search bar"
+                        },
+                    "heavenly potion potion selector button.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1200),
+                        "confidence": 0.75,
+                        "config position name": "potion selection button"
+                        },
+                    },
             "item data": {
                     "bound": {
                         "name to search": "bound",
@@ -989,8 +1029,8 @@ class Dark_Sol(QMainWindow):
                     self.nice_config_save()
 
             def rescale_template(template):
-                base_scale = data["img scales"][template]["scale"]   
-                base_resolution =data["img scales"][template]["resolution"]
+                base_scale = data["img data"][template]["scale"]   
+                base_resolution =data["img data"][template]["resolution"]
 
                 user32 = ctypes.windll.user32
                 gdi32 = ctypes.windll.gdi32
@@ -1022,20 +1062,20 @@ class Dark_Sol(QMainWindow):
             
                 try:
                     if not multiple:
-                        match = pyautogui.locateOnScreen(template_scaled, confidence=.70)
+                        match = pyautogui.locateOnScreen(template_scaled, confidence=data["img data"][template]["confidence"])
                         if match:
                             bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))
                             center = (int(match.left + match.width // 2), int(match.top + match.height // 2))
                             self.log(f"  bbox : {bbox}, center: {center}")
                             ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
                             all_matches_screen.show()
-                            save_position(data["img scales"][template]["position name"], center, bbox if bbox_required else None)
+                            save_position(data["img data"][template]["config position name"], center, bbox if bbox_required else None)
                         else:
                             self.log(f"No match found for template: {template_path}")
 
                     elif multiple:
                         self.log("Searching for multiple matches...")
-                        matches = list(pyautogui.locateAllOnScreen(template_scaled, confidence=.85))
+                        matches = list(pyautogui.locateAllOnScreen(template_scaled, confidence=data["img data"][template]["confidence"]))
                         sorted_matches = sorted(matches, key=lambda box: (box.top))
 
                         def multi_image_template_find(match):
@@ -1053,7 +1093,7 @@ class Dark_Sol(QMainWindow):
                                 self.log(count)
                                 multi_image_template_find(match)
                                 single_match_screen.show()
-                                save_position(data["img scales"][template]["position name"][count], center, bbox if bbox_required else None)
+                                save_position(data["img data"][template]["config position name"][count], center, bbox if bbox_required else None)
                                 
                         elif add_start_index != None:
                             for count, match in enumerate(sorted_matches, start=add_start_index[0]):
@@ -1062,7 +1102,7 @@ class Dark_Sol(QMainWindow):
                                 multi_image_template_find(match)
                                 if count in add_start_index[1]:
                                     single_match_screen.show()
-                                    save_position(data["img scales"][template]["position name"][count], center, bbox if bbox_required else None)
+                                    save_position(data["img data"][template]["config position name"][count], center, bbox if bbox_required else None)
                         
                 except (pyscreeze_ImageNotFoundException, pyautogui.ImageNotFoundException):
                     self.log(f"No matches found for template: {template_path}")
