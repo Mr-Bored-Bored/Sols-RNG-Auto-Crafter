@@ -23,39 +23,38 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 """
 # Tasks (For Mr. Bored)
 
-# Nessesary for v1 Release:
-1. Make auto add checks ignore manual click slots aka check if they are not added and compensate to prevent softlock(lucky potions)
-2. Implement Semi-Auto and Manual Calibration modes
-3. Make confidence for template find be specific per template
-4. Seperate log and print statements
-5. Seperate logs(status updates) and print statements
-6. Add auto find template settings
-7. Complete Auto Find Template function
-8. Add scroll calibration
-9. Update calibration switch button tooltip
+# Necessary for v1 Release:
+1. Implement Semi-Auto and Manual Calibration modes
+2. Seperate logs(status updates) and print statements
+3. Add auto find template settings
+4. Complete Auto Find Template function
+5. Add scroll calibration
+6. Update calibration switch button tooltip
 #Mini Status Label 
-10. Make Mini Status Label movable (when moving make it show largest size)
-11. Make Mini Status Label centered so it doesnt move as much
+7. Make Mini Status Label movable (when moving make it show largest size)
+8. Make Mini Status Label centered so it doesnt move as much
 
 # Might be added for v1 Release:
-12. Add settings tab functionality
+9. Add settings tab functionality
 
 # Optional for v1 Release:
-13. Fix other widgets not closing properly
-14. Add multi template for single location
-15. Add actual logger
-16. Make plugins system
-17. Add theme tab functionality
-18. Able to handle corrupt config
-19. Add config backups
-20. Add ability to export/import presets
-21. Add ability to change hotkeys
-22. Add aura storage checks
-23. Add gui auto resize
-24. Add Logging System
+10. Fix other widgets not closing properly
+11. Add multi template for single location
+12. Add actual logger
+13. Make plugins system
+14. Add theme tab functionality
+15. Able to handle corrupt config
+16. Add config backups
+17. Add ability to export/import presets
+18. Add ability to change hotkeys
+19. Add aura storage checks
+20. Add gui auto resize
+21. Add Logging System
+22. Make it so that it can add in 1's instead of just the amount numbers
 # Mini Status Label
-25. Make Mini Status Label show auto add waitlist
+23. Make Mini Status Label show auto add waitlist
 """
+
 # Loading Screen
 class loading_thread(QThread):
     finished = pyqtSignal()
@@ -594,8 +593,8 @@ class Dark_Sol(QMainWindow):
 
     def create_new_preset(self):
         dlg = QDialog(self)
-        dlg.setWindowTitle("Create New Preset")
         layout = QVBoxLayout(dlg)
+        dlg.setWindowTitle("Create New Preset")
         layout.addWidget(QLabel("Set Preset Name:"))
 
         name_edit = QLineEdit()
@@ -1302,6 +1301,20 @@ class Dark_Sol(QMainWindow):
                 mkey.left_click()
                 self.log("Selection button clicked")
                 time.sleep(slowdown)
+        
+        def add_additional_buttons_for_item(item):
+            self.log(f"Clicking additional buttons for {item}")
+            time.sleep(slowdown)
+            for button_to_click in config["item presets"][self.current_preset][item]["additional buttons to click"]:
+                add_to_button(button_to_click)
+                time.sleep(slowdown)
+                if not check_button(button_to_click):
+                    self.log(f"Additional button {button_to_click} for {item} failed.")
+                    return False
+                else:
+                    self.log(f"Additional button {button_to_click} for {item} succeeded.")
+            return True
+
 
         def macro_loop_iteration(item):
             if item not in self.auto_add_waitlist and self.current_auto_add_potion != item:
@@ -1323,27 +1336,22 @@ class Dark_Sol(QMainWindow):
 
                 time.sleep(slowdown)
                 if item_ready:
-                    self.log(f"Clicking additional buttons for {item}")
-                    time.sleep(slowdown)
-                    for button_to_click in config["item presets"][self.current_preset][item]["additional buttons to click"]:
-                        add_to_button(button_to_click)
-                        time.sleep(slowdown)
-
-                    if not config["item presets"][self.current_preset][item]["instant craft"]:
-                        if self.current_auto_add_potion == None:
-                            if self.find_pixels_with_color("#C2FFA6", "#C1FEA5" ,bbox=config["positions"]["auto add button"]["bbox"]) == 0:
-                                self.move_and_click(config["positions"]["auto add button"]["center"])
-                                self.log("Clicked auto add button")
-                            self.current_auto_add_potion = item
+                    if add_additional_buttons_for_item(item):
+                        if not config["item presets"][self.current_preset][item]["instant craft"]:
+                            if self.current_auto_add_potion == None:
+                                if self.find_pixels_with_color("#C2FFA6", "#C1FEA5" ,bbox=config["positions"]["auto add button"]["bbox"]) == 0:
+                                    self.move_and_click(config["positions"]["auto add button"]["center"])
+                                    self.log("Clicked auto add button")
+                                self.current_auto_add_potion = item
+                                time.sleep(slowdown)
+                            elif not self.current_auto_add_potion == None and item not in self.auto_add_waitlist:
+                                self.auto_add_waitlist.append(item)
+                                self.log(f"{item.capitalize()} added to auto add waitlist")
+                                time.sleep(slowdown)
+                        else:
+                            self.move_and_click(config["positions"]["craft button"])
+                            self.log("Clicked craft button")
                             time.sleep(slowdown)
-                        elif not self.current_auto_add_potion == None and item not in self.auto_add_waitlist:
-                            self.auto_add_waitlist.append(item)
-                            self.log(f"{item.capitalize()} added to auto add waitlist")
-                            time.sleep(slowdown)
-                    else:
-                        self.move_and_click(config["positions"]["craft button"])
-                        self.log("Clicked craft button")
-                        time.sleep(slowdown)
 
             elif item == self.current_auto_add_potion:
                 search_for_potion(item)
@@ -1353,7 +1361,16 @@ class Dark_Sol(QMainWindow):
                 self.log("Checking All Buttons")
                 time.sleep(slowdown)
 
-                for slot in range(1, data["item data"][item]["crafting slots"] + 1):  # ignore manual click slots
+                auto_add_check_range = []
+                for crafting_slot in range(1, data["item data"][item]["crafting slots"] + 1):
+                    if crafting_slot in config["item presets"][self.current_preset][item]["buttons to check"][-1:]:
+                        return
+                    if crafting_slot in config["item presets"][self.current_preset][item]["additional buttons to click"][-1:]:
+                        return
+                    else:
+                        auto_add_check_range.append(crafting_slot)
+                    
+                for slot in auto_add_check_range:
                     add_to_button("add button " + str(slot))
                     if not check_button("add button " + str(slot)):
                         time.sleep(slowdown)
