@@ -1,3 +1,5 @@
+# Dev Mode
+dev_mode = False
 # DPI Setup
 import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
@@ -21,7 +23,7 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 """
 # Tasks (For Mr. Bored)
 
-# Nessesary for Release:
+# Nessesary for v1 Release:
 1. Make auto add checks ignore manual click slots aka check if they are not added and compensate to prevent softlock(lucky potions)
 2. Implement Semi-Auto and Manual Calibration modes
 3. Make confidence for template find be specific per template
@@ -33,10 +35,10 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 7. Make Mini Status Label centered so it doesnt move as much
 
 
-# Might be added for Release:
+# Might be added for v1 Release:
 8. Add settings tab functionality
 
-# Optional for Release:
+# Optional for v1 Release:
 9. Fix other widgets not closing properly
 10. Add multi template for single location
 11. Add actual logger
@@ -394,7 +396,7 @@ class Dark_Sol(QMainWindow):
                         }
                     }
                     
-        if CONFIG_PATH.exists():
+        if CONFIG_PATH.exists() and not dev_mode:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 config = json.load(f)
             
