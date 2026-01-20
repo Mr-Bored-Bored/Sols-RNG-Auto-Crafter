@@ -22,12 +22,9 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 # *Tasks (For Mr. Bored)
 
 # Nessesary for Release:
-1. Add amount button logic (Necessary for release) (Completed?)
-2. Add item selection for each potion / presets (Necessary for release)
 3. Make auto add checks ignore manual click slots (lucky potions) (Necessary for release)
 4. Implement Semi-Auto and Manual Calibration modes (Necessary for release)
 5. Make confidence for template find be specific per template (Necessary for release)
-6. Implement semi-auto and manual calibrations (Necessary for release)
 
 # Might be added for Release:
 6. Add settings tab functionality (Might be added by release)
@@ -42,6 +39,7 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 13. Add config backups
 14. Add ability to export/import presets
 15. Add ability to change hotkeys
+16. Add aura storage checks
 """
 # Loading Screen
 class loading_thread(QThread):
@@ -121,16 +119,16 @@ class Dark_Sol(QMainWindow):
         # Create Calibration Tab Elements
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
-        # Auto Calibration mode
+        # Auto Calibration Mode
         self.find_add_button = QPushButton("Find Add Buttons")
         self.find_amount_box = QPushButton("Find Amount Boxes")
         self.find_auto_add_button = QPushButton("Find Auto Add Button")
         self.find_craft_button = QPushButton("Find Craft Button")
         self.find_search_bar = QPushButton("Find Search Bar")
         self.find_potion_selection_button = QPushButton("Find Potion Selection Button")
-        # Semi Auto Calibration mode
+        # Semi Auto Calibration Mode
         self.set_add_button_template = QPushButton("Set Add Button Template")
-        # Manual Calibration mode
+        # Manual Calibration Mode
         self.add_button_coordinates_selector = QWidget()
         self.add_button_coordinates_selector.setWindowTitle("Set Add Button Coordinates")
         self.add_button_coordinates_selector_layout = QVBoxLayout(self.add_button_coordinates_selector)
@@ -148,10 +146,11 @@ class Dark_Sol(QMainWindow):
         self.set_amount_box_3_coordinates = QPushButton("Set Amount Box 3 Coordinates")
         self.set_amount_box_4_coordinates = QPushButton("Set Amount Box 4 Coordinates")
         self.set_auto_add_button_coordinates = QPushButton("Set Auto Add Button Coordinates")
+        self.set_amount_box_coordinates = QPushButton("Set Amount Box Coordinates")
         self.set_craft_button_coordinates = QPushButton("Set Craft Button Coordinates")
         self.set_search_bar_coordinates = QPushButton("Set Search Bar Coordinates")
         self.set_potion_selection_button_coordinates = QPushButton("Set Potion Selection Button Coordinates")
-        #Status Label Setup
+        # Mini Status Label 
         self.mini_status_widget = QWidget()
         self.mini_status_label = QLabel("Stopped", self.mini_status_widget)
         # Create Running Variables
@@ -185,23 +184,11 @@ class Dark_Sol(QMainWindow):
         self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
         self.preset_selector.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
         self.preset_selector.setMinimumHeight(52)
-        self.rename_preset_button.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
-        self.delete_preset_button.setStyleSheet("color: red; background: #111; font-size: 24px; padding: 6px; border: 1px solid red;")
         self.preset_selector.blockSignals(True)
         self.preset_selector.setCurrentText(self.current_preset)
         self.preset_selector.blockSignals(False)
-        self.presets_tab.setStyleSheet("""
-            QWidget { background-color: black; }
-            QLabel { color: cyan; font-size: 18px; }
-            QCheckBox { color: cyan; font-size: 14px; }
-            QScrollArea { border: 0px; }
-        """)
-        self.presets_tab_scroller.setFrameShape(QFrame.Shape.NoFrame)
-        self.presets_tab_scroller.setWidgetResizable(True)
-        self.presets_tab_scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.presets_tab_scroller.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.presets_tab_main_vbox = QVBoxLayout()
-
+        self.rename_preset_button.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
+        self.delete_preset_button.setStyleSheet("color: red; background: #111; font-size: 24px; padding: 6px; border: 1px solid red;")
         presets_header = QWidget()
         presets_header_layout = QHBoxLayout(presets_header)
         presets_header_layout.setContentsMargins(0, 0, 0, 0)
@@ -209,13 +196,23 @@ class Dark_Sol(QMainWindow):
         presets_header_layout.addWidget(self.preset_selector, 1)
         presets_header_layout.addWidget(self.rename_preset_button)
         presets_header_layout.addWidget(self.delete_preset_button)
-
-        self.presets_tab_main_vbox.addWidget(presets_header)
-        self.presets_tab_main_vbox.addWidget(self.presets_tab_scroller)
-        self.presets_tab.setLayout(self.presets_tab_main_vbox)
+        self.presets_tab_scroller.setWidget(self.presets_tab_content)
+        self.presets_tab_scroller.setFrameShape(QFrame.Shape.NoFrame)
+        self.presets_tab_scroller.setWidgetResizable(True)
+        self.presets_tab_scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.presets_tab_scroller.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.presets_tab_content_layout = QVBoxLayout(self.presets_tab_content)
         self.presets_tab_content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.presets_tab_scroller.setWidget(self.presets_tab_content)
+        self.presets_tab_main_vbox = QVBoxLayout()
+        self.presets_tab_main_vbox.addWidget(presets_header)
+        self.presets_tab_main_vbox.addWidget(self.presets_tab_scroller)
+        self.presets_tab.setStyleSheet("""
+                    QWidget { background-color: black; }
+                    QLabel { color: cyan; font-size: 18px; }
+                    QCheckBox { color: cyan; font-size: 14px; }
+                    QScrollArea { border: 0px; }
+                """)
+        self.presets_tab.setLayout(self.presets_tab_main_vbox)
         self.build_potions_ui()
         # Set Calibrations Tab Layout
         self.calibrations_tab_main_vbox = QVBoxLayout()
@@ -333,51 +330,57 @@ class Dark_Sol(QMainWindow):
                     "current_preset": "Preset 1",
 
                     "item presets": {
-                        "Preset 1": {
-                            "bound": {
-                                "buttons to check": ["add button 1", "add button 2"],
-                                "additional buttons to click": ["add button 4"],
-                                "instant craft": False,
-                                "enabled": True,
-                                "collapsed": True
-                            },
-                            "heavenly": {
-                                "buttons to check": ["add button 2", "add button 3"],
-                                "additional buttons to click": ["add button 1"],
-                                "instant craft": False,
-                                "enabled": True,
-                                "collapsed": True
-                            },
-                            "zeus": {
-                                "buttons to check": ["add button 3"],
-                                "additional buttons to click": ["add button 1", "add button 2"],
-                                "instant craft": False,
-                                "enabled": True,
-                                "collapsed": True
-                            },
-                            "poseidon": {
-                                "buttons to check": ["add button 2"],
-                                "additional buttons to click": ["add button 1"],
-                                "instant craft": False,
-                                "enabled": True,
-                                "collapsed": True
-                            },
-                            "hades": {
-                                "buttons to check": ["add button 2"],
-                                "additional buttons to click": ["add button 1"],
-                                "instant craft": False,
-                                "enabled": True,
-                                "collapsed": True
-                            },
-                            "warp": {
-                                "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
-                                "additional buttons to click": ["add button 1", "add button 2"],
-                                "instant craft": False,
-                                "enabled": False,
-                                "collapsed": False
-                            },
+                            "Main": {
+                                "bound": {
+                                    "buttons to check": ["add button 1"],
+                                    "additional buttons to click": ["add button 4"],
+                                    "crafting slots": 4,
+                                    "instant craft": False,
+                                    "enabled": True,
+                                    "collapsed": True
+                                },
+                                "heavenly": {
+                                    "buttons to check": ["add button 2"],
+                                    "additional buttons to click": ["add button 1"],
+                                    "crafting slots": 5,
+                                    "instant craft": False,
+                                    "enabled": True,
+                                    "collapsed": True
+                                },
+                                "zeus": {
+                                    "buttons to check": ["add button 3"],
+                                    "additional buttons to click": ["add button 1", "add button 2"],
+                                    "crafting slots": 5,
+                                    "instant craft": False,
+                                    "enabled": True,
+                                    "collapsed": True
+                                },
+                                "poseidon": {
+                                    "buttons to check": ["add button 2"],
+                                    "additional buttons to click": ["add button 1"],
+                                    "crafting slots": 4,
+                                    "instant craft": False,
+                                    "enabled": True,
+                                    "collapsed": True
+                                },
+                                "hades": {
+                                    "buttons to check": ["add button 2"],
+                                    "additional buttons to click": ["add button 1"],
+                                    "crafting slots": 4,
+                                    "instant craft": False,
+                                    "enabled": True,
+                                    "collapsed": True
+                                },
+                                "warp": {
+                                    "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
+                                    "additional buttons to click": ["add button 1", "add button 2"],
+                                    "crafting slots": 6,
+                                    "instant craft": False,
+                                    "enabled": False,
+                                    "collapsed": False
+                                }
+                            }
                         }
-                    }
                     }
                     
         if CONFIG_PATH.exists():
@@ -995,7 +998,6 @@ class Dark_Sol(QMainWindow):
 
                 template_img = Image.open(template_path)
                 template_scaled = template_img.resize((int(template_img.width * total_scale_x), int(template_img.height * total_scale_y)), Image.Resampling.LANCZOS)
-                template_scaled.show()
                 return template_scaled
                     
             def find_template():
@@ -1295,6 +1297,7 @@ class Dark_Sol(QMainWindow):
                 time.sleep(slowdown)
 
                 for slot in range(1, data["item data"][item]["crafting slots"] + 1):  # ignore manual click slots
+                    add_to_button("add button " + str(slot))
                     if not check_button("add button " + str(slot)):
                         time.sleep(slowdown)
                         item_ready = False
