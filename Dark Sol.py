@@ -41,7 +41,7 @@ os.makedirs(local_appdata_directory, exist_ok=True)
 11. Add actual logger
 12. Make plugins system
 13. Add theme tab functionality
-14. # Able to handle corrupt config
+14. Able to handle corrupt config
 15. Add config backups
 16. Add ability to export/import presets
 17. Add ability to change hotkeys
