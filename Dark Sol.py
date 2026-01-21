@@ -1,38 +1,43 @@
 """
 # Tasks (For Mr. Bored)
 
-# Necessary for v1 Release:
+# Necessary for First Release:
 1. Implement Semi-Auto and Manual Calibration modes
 2. Add auto find template settings
 3. Add scroll calibration
-#Mini Status Label 
-4. Make Mini Status Label movable (when moving make it show largest size)
-# Might be added for v1 Release:
-5. Add settings tab functionality
+4. Add auto updater
+- Mini Status Label
+5. Make Mini Status Label movable (when moving make it show largest size)
 
-# Optional for v1 Release / Planned for the future:
-6. Fix other widgets not closing properly
-7. Add multi template for single location
-8. Add actual logger
-9. Make plugins system
-10. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
-11. Able to handle corrupt config
-12. Add config backups
-13. Add ability to export/import presets
-14. Add ability to change hotkeys
-15. Add aura storage checks
-16. Add gui auto resize
-17. Add Logging System
-18. Make it so that it can add in 1's instead of just the amount numbers
-19. Complete Auto Find Template function
-# Mini Status Label
-20. Make Mini Status Label show auto add waitlist
+# Might be added for First Release:
+6. Add settings tab functionality
 
-# Completed (For commits):
+# Planned for the future:
+7. Fix other widgets not closing properly
+8. Add multi template for single location
+9. Add actual logger
+10. Make plugins system
+11. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
+12. Able to handle corrupt config
+13. Add config backups
+14. Add importing / exporting presets
+15. Add importing / exporting themes
+16. Add ability to change hotkeys
+17. Add aura storage checks
+18. Add gui auto resize
+19. Add Logging System
+20. Make it so that it can add in 1's instead of just the amount numbers
+21. Complete auto find template function
+22. Add custom log messages (ability for certain logs to not show)
+- Mini Status Label
+23. Make mini status label show auto add waitlist and add setting for it 
+
+--- IGNORE ---
+# Completed (To write commit messages):
 """
 
-# Dev Mode
-dev_mode = False
+# Dev Tools
+use_built_in_config = False
 # DPI Setup
 import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
@@ -180,7 +185,7 @@ hidden_config = {
                 }
             }
             
-if CONFIG_PATH.exists() and not dev_mode:
+if CONFIG_PATH.exists() and not use_built_in_config:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = json.load(f)
     
