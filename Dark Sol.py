@@ -4,12 +4,13 @@
 # Necessary for First Release:
 1. Implement Semi-Auto and Manual Calibration modes
 2. Add auto find template settings
-3. Add scroll calibration
-4. Add auto updater
+3. Add auto updater
+4. Make all hardcoded resolutions dynamic
 - Mini Status Label
-5. Make Mini Status Label movable (when moving make it show largest size)
+4. Make Mini Status Label movable (when moving make it show largest size)
 
 # Might be added for First Release:
+5. Advanced auto updater
 6. Add settings tab functionality
 
 # Planned for the future:
@@ -34,6 +35,7 @@
 
 --- IGNORE ---
 # Completed (To write commit messages):
+1. Added scroll calibration function
 """
 
 # Dev Tools
@@ -115,6 +117,13 @@ def nice_config_save(ind=4):
             f.write(text)
 
 hidden_config = {
+            "data": {
+                "scroll amounts":{
+                "to_4": 18,
+                "past_4": 40
+                }
+            },
+
             "positions": {
                 "add button 1": {"bbox": [757, 656, 837, 688], "center": [797, 672]},
                 "add button 2": {"bbox": [757, 711, 837, 743], "center": [797, 727]},
@@ -127,8 +136,9 @@ hidden_config = {
                 "potion selection button": [1146, 460],
                 "search bar": [1137, 381],
                 "auto add button": {"bbox": [646, 600, 768, 636], "center": [707, 618]},
-                "craft button": [573, 618],
+                "craft button": [573, 618]
             },
+
             "current_preset": "Main",
 
             "item presets": {
@@ -402,6 +412,7 @@ class Dark_Sol(QMainWindow):
         self.find_craft_button = QPushButton("Find Craft Button")
         self.find_search_bar = QPushButton("Find Search Bar")
         self.find_potion_selection_button = QPushButton("Find Potion Selection Button")
+        self.calibrate_scrolls_button = QPushButton("Calibrate Scroll Amounts")
         # Semi Auto Calibration Mode
         self.set_add_button_template = QPushButton("Set Add Button Template")
         self.set_amount_box_template = QPushButton("Set Amount Box Template")
@@ -506,6 +517,8 @@ class Dark_Sol(QMainWindow):
         auto_layout.addWidget(self.find_craft_button)
         auto_layout.addWidget(self.find_search_bar)
         auto_layout.addWidget(self.find_potion_selection_button)
+        auto_layout.addWidget(self.calibrate_scrolls_button)
+        self.calibrate_scrolls_button.setToolTip("You must be in the crafting menu for this to work")
         # Semi Auto Calibration Page
         semi_auto_calibration_page = QWidget()
         semi_auto_layout = QVBoxLayout(semi_auto_calibration_page)
@@ -545,8 +558,8 @@ class Dark_Sol(QMainWindow):
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
         self.set_add_button_coordinates.clicked.connect(lambda: self.add_button_coordinates_selector.show())
         self.set_amount_box_coordinates.clicked.connect(lambda: self.amount_box_coordinates_selector.show())
-        self.find_add_button.clicked.connect(lambda: self.auto_find_image("add button.png", True, True, True))
-        self.find_amount_box.clicked.connect(lambda: self.auto_find_image("amount box.png", True, True))
+        self.find_add_button.clicked.connect(lambda: self.choose_kept_matches("add button.png", True, True, True))
+        self.find_amount_box.clicked.connect(lambda: self.choose_kept_matches("amount box.png", True, True))
         self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True, bbox_required=True))
         self.find_craft_button.clicked.connect(lambda: self.auto_find_image("craft button.png", True))
         self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True))
@@ -589,10 +602,6 @@ class Dark_Sol(QMainWindow):
         self.start_button.clicked.connect(self.start_macro)
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
-
-    def update_config(self, key, new_value):
-        config[key] = new_value
-        nice_config_save()
 
     def create_new_preset(self):
         dlg = QDialog(self)
@@ -991,6 +1000,26 @@ class Dark_Sol(QMainWindow):
         self.stop_macro_signal.connect(self.stop_macro)
         threading.Thread(target=self.hotkey_listener, daemon=True).start()
 
+    def choose_kept_matches(self, template, save=False, multiple=False, bbox_required=False):
+        what_selections = QMessageBox(self)
+        what_selections.setWindowTitle("Match Selector")
+
+        if template == "add button.png":
+            what_selections.setText("Are the add button(s) 1–3 or 4?")
+        elif template == "amount box.png":
+            what_selections.setText("Are the amount box(es) 1–3 or 4?")
+
+        btn_1_3 = what_selections.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
+        btn_4  = what_selections.addButton("4",   QMessageBox.ButtonRole.AcceptRole)
+        what_selections.exec()
+
+        if what_selections.clickedButton() == btn_4:
+            add_start_index = 1, (3,)
+        else:
+            add_start_index = None
+
+        self.auto_find_image(template, save=save, multiple=multiple, bbox_required=bbox_required, add_start_index=add_start_index)
+
     def find_pixels_with_color(self, *targets, bbox=None):
         if bbox == None:
             img = ImageGrab.grab()
@@ -1017,7 +1046,7 @@ class Dark_Sol(QMainWindow):
         match_count = int(mask.sum())
         return match_count
 
-    def auto_find_image(self, template, save=False, multiple=False, bbox_required=False):
+    def auto_find_image(self, template, save=False, multiple=False, bbox_required=False, add_start_index=None):
             add_start_index = None
             template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
              
@@ -1118,35 +1147,42 @@ class Dark_Sol(QMainWindow):
                     QMessageBox.warning(self, "Dark Sol", f"Error Finding Matches:   {e}")
                 count = 0
 
-            if template == "add button.png":
-                what_add_buttons = QMessageBox(self)
-                what_add_buttons.setWindowTitle("Add Button Selector")
-                what_add_buttons.setText("Are the add button(s) 1–3 or 4?")
-                btn_1_3 = what_add_buttons.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
-                btn_4  = what_add_buttons.addButton("4",   QMessageBox.ButtonRole.AcceptRole)
-                what_add_buttons.exec()
-
-                if what_add_buttons.clickedButton() == btn_4:
-                    add_start_index = 1, (3,)
-                else :
-                    add_start_index = None
-
-            elif template == "amount box.png":
-                what_amount_boxes = QMessageBox(self)
-                what_amount_boxes.setWindowTitle("Amount Box Selector")
-                what_amount_boxes.setText("Are the amount box(es) 1–3 or 4?")
-                btn_1_3 = what_amount_boxes.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
-                btn_4  = what_amount_boxes.addButton("4",   QMessageBox.ButtonRole.AcceptRole)
-                what_amount_boxes.exec()
-
-                if what_amount_boxes.clickedButton() == btn_4:
-                    add_start_index = 1, (3,)
-                else:
-                    add_start_index = None
-
             template_scaled = rescale_template(template)
             find_template()
 
+    def calibrate_scrolling(self):
+        def count_scrolls():
+            scrolls = 0
+            found = False
+            while True:
+                
+                img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
+                print(f"scroll check add button 4 image captured")
+
+                if img is None:
+                    raise Exception("Image capture failed in check_button")
+                
+                if reader.readtext(np.array(img), detail=0)[0] != "":
+                    print("Item not ready, 'Add' detected.")
+                    found = True
+
+                if found:
+                    return scrolls
+
+                pyautogui.scroll(-1)
+                scrolls += 1
+
+        self.mini_status_widget.show()
+        self.update_status("Calibrating scrolling")
+        self.move_and_click(config["positions"]["add button 4"]["center"])
+        mkey.left_click()
+        pyautogui.scroll(2000)
+        config["data"]["scroll amounts"]["to_4"] = count_scrolls()
+        nice_config_save()
+        config["data"]["scroll amounts"]["past_4"] = count_scrolls()
+        nice_config_save()
+        self.mini_status_widget.hide()
+            
     def start_macro(self):
         if self.worker is not None and self.worker.is_alive():
             return
