@@ -34,8 +34,6 @@
 
 --- IGNORE ---
 # Completed (To write commit messages):
-1. Added scroll calibration function
-2. Added svgs for potion collapse/expand buttons
 """
 
 # Dev Tools
@@ -453,6 +451,7 @@ class Dark_Sol(QMainWindow):
         self.macro_stopped_signal.connect(self.on_macro_stopped)
         self.status_signal.connect(self.update_status)
         self.init_ui()
+        self.start_settings()
         
         
     def init_ui(self):
@@ -1433,6 +1432,12 @@ class Dark_Sol(QMainWindow):
         for item in data["item data"].keys():
                 if config["item presets"][self.current_preset][item]["enabled"]:
                     macro_loop_iteration(item)
+    
+    def start_settings(self):
+        if "--reset_config" in sys.argv:
+            global config
+            config = hidden_config
+            nice_config_save()
                 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
