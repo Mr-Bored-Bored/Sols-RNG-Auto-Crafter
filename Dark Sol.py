@@ -6,26 +6,25 @@
 2. Add auto find template settings
 3. Add auto updater
 4. Make all hardcoded resolutions dynamic
+5. Improve gui
 - Mini Status Label
-4. Make Mini Status Label movable (when moving make it show largest size)
+6. Make Mini Status Label movable (when moving make it show largest size)
 
 # Might be added for First Release:
-5. Advanced auto updater
-6. Add settings tab functionality
+7. Advanced auto updater
+8. Add settings tab functionality
 
 # Planned for the future:
-7. Fix other widgets not closing properly
-8. Add multi template for single location
-9. Add actual logger
-10. Make plugins system
-11. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
-12. Able to handle corrupt config
-13. Add config backups
-14. Add importing / exporting presets
-15. Add importing / exporting themes
-16. Add ability to change hotkeys
-17. Add aura storage checks
-18. Add gui auto resize
+9. Fix other widgets not closing properly
+10. Add multi template for single location
+11. Add actual logger
+12. Make plugins system
+13. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
+14. Able to handle corrupt config
+15. Add config backups
+16. Add importing / exporting presets
+17. Add importing / exporting themes
+18. Add ability to change hotkeys
 19. Add Logging System
 20. Make it so that it can add in 1's instead of just the amount numbers
 21. Complete auto find template function
@@ -36,6 +35,7 @@
 --- IGNORE ---
 # Completed (To write commit messages):
 1. Added scroll calibration function
+2. Added svgs for potion collapse/expand buttons
 """
 
 # Dev Tools
@@ -46,8 +46,9 @@ ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 # Imports
 import os, sys, threading, pyautogui, time, ctypes, pathlib, json
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize
+from PyQt6.QtGui import QIcon
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
 from PIL import Image, ImageDraw, ImageGrab
 from mousekey import MouseKey
 from pynput import keyboard
@@ -343,7 +344,6 @@ class loading_thread(QThread):
         reader = easyocr.Reader(['en'])
         self.progress.emit("EasyOCR Initialized (%p%)", 3)
         self.finished.emit()
-
 class loading_screen(QWidget):
     def __init__(self):
         super().__init__()
@@ -402,6 +402,8 @@ class Dark_Sol(QMainWindow):
         self.delete_preset_button = QPushButton("Delete")
         self.presets_tab_scroller = QScrollArea()
         self.presets_tab_content = QWidget()
+        self.up_chevron_svg = str(local_appdata_directory / "Lib" / "Icons" / "up chevron.svg")
+        self.down_chevron_svg = str(local_appdata_directory / "Lib" / "Icons" / "down chevron.svg")
         # Create Calibration Tab Elements
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
@@ -448,9 +450,10 @@ class Dark_Sol(QMainWindow):
         self.macro_timer = QTimer(self)
         self.run_event = threading.Event()
         self.worker = None
-        self.init_ui()
-        self.status_signal.connect(self.update_status)
         self.macro_stopped_signal.connect(self.on_macro_stopped)
+        self.status_signal.connect(self.update_status)
+        self.init_ui()
+        
         
     def init_ui(self):
         # Initialize Tabs
@@ -564,11 +567,12 @@ class Dark_Sol(QMainWindow):
         self.find_craft_button.clicked.connect(lambda: self.auto_find_image("craft button.png", True))
         self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True))
         self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("heavenly potion potion selector button.png", True))
+        self.calibrate_scrolls_button.clicked.connect(self.calibrate_scrolling)
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
         self.delete_preset_button.clicked.connect(self.delete_preset)
         #Status Label Setup
-        self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowTransparentForInput)
+        self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
         self.mini_status_widget.setStyleSheet("background-color: black; border: 2px solid cyan; border-radius: 6px;")
         self.general_mini_status_label.setStyleSheet("color: cyan; font-size: 20px;")
         self.mini_status_label.setStyleSheet("color: cyan; font-size: 20px;")
@@ -831,8 +835,7 @@ class Dark_Sol(QMainWindow):
             collapsed = potion_config["collapsed"]
             body.setVisible(not collapsed)
             instant.setVisible(not collapsed)
-            sender.setText("▶" if collapsed else "▼")
-
+            sender.setIcon(QIcon(self.up_chevron_svg) if collapsed else QIcon(self.down_chevron_svg))
             nice_config_save()
             self.presets_tab_content.adjustSize()
 
@@ -845,12 +848,11 @@ class Dark_Sol(QMainWindow):
             instant = sender.property("instant")
             collapse_button = sender.property("collapse button")
             potion_config = config["item presets"][self.current_preset][potion]
-
             collapsed = potion_config["collapsed"]
             body.setVisible(checked and not collapsed)
             instant.setVisible(checked and not collapsed)
             collapse_button.setEnabled(checked)
-            collapse_button.setText("▼" if checked and not collapsed else "▶")
+            collapse_button.setIcon(QIcon(self.down_chevron_svg) if checked and not collapsed else QIcon(self.up_chevron_svg))
             nice_config_save()
             self.presets_tab_content.adjustSize()
 
@@ -885,8 +887,9 @@ class Dark_Sol(QMainWindow):
             enabled_checkbox.setProperty("config_key", "enabled")
             enabled_checkbox.toggled.connect(on_potion_toggle_changed)
             # Collapse Button
-            collapse_button = QPushButton("▶" if potion_config["collapsed"] else "▼")
-            collapse_button.setFixedWidth(45)
+            collapse_button = QPushButton()
+            collapse_button.setIcon(QIcon(self.up_chevron_svg) if potion_config["collapsed"] else QIcon(self.down_chevron_svg))
+            collapse_button.setFixedSize(45, 35)
             collapse_button.setStyleSheet("color: cyan; background: #111; border: 1px solid cyan; font-size: 22px;")
             # Header Layout
             QHLayout.addWidget(title)
@@ -960,7 +963,8 @@ class Dark_Sol(QMainWindow):
             collapse_button.clicked.connect(on_potion_collapse_clicked)
 
             collapse_button.setEnabled(potion_config["enabled"])
-            collapse_button.setText("▼" if potion_config["enabled"] and not collapsed else "▶")
+            collapse_button.setIcon(QIcon(self.down_chevron_svg) if potion_config["enabled"] and not collapsed else QIcon(self.up_chevron_svg))
+            collapse_button.setIconSize(QSize(30, 75))
 
             enabled_checkbox.setProperty("body", body)
             enabled_checkbox.setProperty("instant", instant_craft_checkbox)
@@ -1151,34 +1155,45 @@ class Dark_Sol(QMainWindow):
             find_template()
 
     def calibrate_scrolling(self):
-        def count_scrolls():
+        def count_scrolls(find=True):
             scrolls = 0
             found = False
+            gone = False
             while True:
-                
                 img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 print(f"scroll check add button 4 image captured")
 
                 if img is None:
                     raise Exception("Image capture failed in check_button")
                 
-                if reader.readtext(np.array(img), detail=0)[0] != "":
-                    print("Item not ready, 'Add' detected.")
-                    found = True
+                if find:
+                        if reader.readtext(np.array(img), detail=0).__len__() > 0:
+                            print("'Add' detected saving scroll amount:", scrolls)
+                            found = True
 
-                if found:
-                    return scrolls
+                        if found:
+                            return scrolls
 
-                pyautogui.scroll(-1)
-                scrolls += 1
+                        pyautogui.scroll(-1)
+                        scrolls += 1
+                elif not find:
+                        pyautogui.scroll(-1)
+                        if reader.readtext(np.array(img), detail=0).__len__() == 0:
+                            print("'Moved away from previous add button")
+                            gone = True
+
+                        if gone:
+                            hi = []
+                            return
 
         self.mini_status_widget.show()
         self.update_status("Calibrating scrolling")
-        self.move_and_click(config["positions"]["add button 4"]["center"])
+        self.move_and_click(config["positions"]["amount box 4"])
         mkey.left_click()
         pyautogui.scroll(2000)
         config["data"]["scroll amounts"]["to_4"] = count_scrolls()
         nice_config_save()
+        count_scrolls(False)
         config["data"]["scroll amounts"]["past_4"] = count_scrolls()
         nice_config_save()
         self.mini_status_widget.hide()
@@ -1260,11 +1275,11 @@ class Dark_Sol(QMainWindow):
                 print("Moved to amount box 4 center")
                 pyautogui.scroll(2000)
                 print("Scrolled up")
-                pyautogui.scroll(-18)
+                pyautogui.scroll(-config["data"]["scroll amounts"]["to_4"])
                 print("Scrolled down to slot 4")
                 time.sleep(slowdown)
                 for x in range(4, int(button_to_add_to[-1])):
-                    pyautogui.scroll(-40)
+                    pyautogui.scroll(-config["data"]["scroll amounts"]["past_4"])
                     print("Scrolled down to slot", x + 1)
                 mkey.left_click()
                 mkey.left_click()
@@ -1275,7 +1290,7 @@ class Dark_Sol(QMainWindow):
                 else:
                     keyboard.Controller().type("1")
                     print("Typed amount: 1")
-                self.move_and_click(config["positions"][button_to_add_to]["center"])
+                self.move_and_click(config["positions"]["add button 4"]["center"])
                 print(f"{button_to_add_to} clicked")
 
         def check_button(button_to_check):
@@ -1294,10 +1309,10 @@ class Dark_Sol(QMainWindow):
                 print("Moved to amount box 4")
                 pyautogui.scroll(2000)
                 print("Scrolled up")
-                pyautogui.scroll(-18)
+                pyautogui.scroll(-config["data"]["scroll amounts"]["to_4"])
                 print("Scrolled down to slot 4")
                 for x in range(4, int(button_to_check[-1])):
-                    pyautogui.scroll(-40)
+                    pyautogui.scroll(-config["data"]["scroll amounts"]["past_4"])
                     print("Scrolled down to slot", x + 1)
                 time.sleep(slowdown2)
                 img = ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
