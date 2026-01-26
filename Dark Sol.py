@@ -1164,7 +1164,7 @@ class Dark_Sol(QMainWindow):
                 img =ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 if find:
                     try:
-                        matches = pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["confidence"])
+                        pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["confidence"])
                         print("'Add' detected saving scroll amount:", scrolls)
                         found = True
                     except pyautogui.ImageNotFoundException:
@@ -1179,7 +1179,7 @@ class Dark_Sol(QMainWindow):
                     scrolls += 1
                 elif not find:
                     try:
-                        matches = pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["confidence"])
+                        pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["confidence"])
                     except pyautogui.ImageNotFoundException:
                         print("'Moved away from previous add button")
                         gone = True
