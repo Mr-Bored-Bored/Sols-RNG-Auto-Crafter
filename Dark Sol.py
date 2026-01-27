@@ -7,33 +7,39 @@
 3. Add auto updater
 4. Make all hardcoded resolutions dynamic
 5. Improve gui
+# Start Arguments
+6. Add main and auto updater reinstall arguements
 - Mini Status Label
-6. Make Mini Status Label movable (when moving make it show largest size)
+7. Make Mini Status Label movable (when moving make it show largest size)
 
 # Might be added for First Release:
-7. Advanced auto updater
-8. Add settings tab functionality
+8. Advanced auto updater (with progress bar)
+9. Add settings tab functionality
 
 # Planned for the future:
-9. Fix other widgets not closing properly
-10. Add multi template for single location
-11. Add actual logger
-12. Make plugins system
-13. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
-14. Able to handle corrupt config
-15. Add config backups
-16. Add importing / exporting presets
-17. Add importing / exporting themes
-18. Add ability to change hotkeys
-19. Add Logging System
-20. Make it so that it can add in 1's instead of just the amount numbers
-21. Complete auto find template function
-22. Add custom log messages (ability for certain logs to not show)
+10. Fix other widgets not closing properly
+11. Add multi template for single location
+12. Add actual logger
+13. Make plugins system
+14. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
+15. Able to handle corrupt config
+16. Add config backups
+17. Add importing / exporting presets
+18. Add importing / exporting themes
+19. Add ability to change hotkeys
+20. Add Logging System
+21. Make it so that it can add in 1's instead of just the amount numbers
+22. Complete auto find template function
+23. Add custom log messages (ability for certain logs to not show)
 - Mini Status Label
-23. Make mini status label show auto add waitlist and add setting for it 
+24. Make mini status label show auto add waitlist and add setting for it 
+
+# Start Arguments
+--reset_config: Resets config to default settings
 
 --- IGNORE ---
 # Completed (To write commit messages):
+
 """
 
 # Dev Tools
@@ -45,7 +51,7 @@ ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 import os, sys, threading, pyautogui, time, ctypes, pathlib, json
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QPixmap
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PIL import Image, ImageDraw, ImageGrab
 from mousekey import MouseKey
@@ -402,6 +408,7 @@ class Dark_Sol(QMainWindow):
         self.presets_tab_content = QWidget()
         self.up_chevron_svg = str(local_appdata_directory / "Lib" / "Icons" / "up chevron.svg")
         self.down_chevron_svg = str(local_appdata_directory / "Lib" / "Icons" / "down chevron.svg")
+        self.up_chevron_disabled_svg = str(local_appdata_directory / "Lib" / "Icons" / "up chevron disabled.svg")
         # Create Calibration Tab Elements
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
@@ -451,8 +458,6 @@ class Dark_Sol(QMainWindow):
         self.macro_stopped_signal.connect(self.on_macro_stopped)
         self.status_signal.connect(self.update_status)
         self.init_ui()
-        self.start_settings()
-        
         
     def init_ui(self):
         # Initialize Tabs
@@ -784,7 +789,7 @@ class Dark_Sol(QMainWindow):
                 QCheckBox::indicator:checked { background-color: #0aa; border: 1px solid cyan; }
             """)
 
-        def on_potion_toggle_changed(checked: bool):
+        def change_potion_toggle(checked: bool):
             sender = self.sender()
             if sender is None:
                 return
@@ -793,7 +798,12 @@ class Dark_Sol(QMainWindow):
             config["item presets"][self.current_preset][potion][config_key] = bool(checked)
             nice_config_save()
 
-        def on_potion_list_toggle_changed(checked: bool):
+        def check_collapsed_state(sender, potion_config):
+            collapse_button_icon = QIcon(self.down_chevron_svg) if potion_config["enabled"] and not potion_config["collapsed"] else QIcon(self.up_chevron_svg)
+            collapse_button_icon.addFile(self.up_chevron_disabled_svg, QSize(), QIcon.Mode.Disabled)
+            sender.setIcon(collapse_button_icon)
+
+        def change_potion_list(checked: bool):
             sender = self.sender()
             if sender is None:
                 return
@@ -817,41 +827,50 @@ class Dark_Sol(QMainWindow):
             items.sort(key=button_order_key)
             nice_config_save()
 
-        def on_potion_collapse_clicked():
+        def collapse_potion():
             sender = self.sender()
+
             if sender is None or not isinstance(sender, QPushButton):
                 return
+            
             potion = sender.property("potion")
             body = sender.property("body")
-            instant = sender.property("instant")
+            instant_craft = sender.property("instant craft")
             cb_enabled = sender.property("cb enabled")
             potion_config = config["item presets"][self.current_preset][potion]
+            
 
             if not cb_enabled.isChecked():
                 return
 
             potion_config["collapsed"] = not potion_config["collapsed"]
             collapsed = potion_config["collapsed"]
+
+            check_collapsed_state(sender, potion_config)
             body.setVisible(not collapsed)
-            instant.setVisible(not collapsed)
-            sender.setIcon(QIcon(self.up_chevron_svg) if collapsed else QIcon(self.down_chevron_svg))
+            instant_craft.setVisible(not collapsed)
+
             nice_config_save()
             self.presets_tab_content.adjustSize()
 
-        def on_enabled_ui_changed(checked: bool):
+        def potion_enabled(checked: bool):
             sender = self.sender()
+
             if sender is None or not isinstance(sender, QCheckBox):
                 return
+            
             potion = sender.property("potion")
             body = sender.property("body")
-            instant = sender.property("instant")
+            instant_craft = sender.property("instant craft")
             collapse_button = sender.property("collapse button")
             potion_config = config["item presets"][self.current_preset][potion]
+
             collapsed = potion_config["collapsed"]
             body.setVisible(checked and not collapsed)
-            instant.setVisible(checked and not collapsed)
+            instant_craft.setVisible(checked and not collapsed)
             collapse_button.setEnabled(checked)
-            collapse_button.setIcon(QIcon(self.down_chevron_svg) if checked and not collapsed else QIcon(self.up_chevron_svg))
+            check_collapsed_state(collapse_button, potion_config)
+
             nice_config_save()
             self.presets_tab_content.adjustSize()
 
@@ -877,19 +896,16 @@ class Dark_Sol(QMainWindow):
             checkbox_into_toggler(instant_craft_checkbox)
             instant_craft_checkbox.setProperty("potion", potion)
             instant_craft_checkbox.setProperty("config_key", "instant craft")
-            instant_craft_checkbox.toggled.connect(on_potion_toggle_changed)
+            instant_craft_checkbox.toggled.connect(change_potion_toggle)
             # Enabled Checkbox
             enabled_checkbox = QCheckBox("Enabled")
             enabled_checkbox.setChecked(bool(potion_config["enabled"]))
             checkbox_into_toggler(enabled_checkbox)
             enabled_checkbox.setProperty("potion", potion)
             enabled_checkbox.setProperty("config_key", "enabled")
-            enabled_checkbox.toggled.connect(on_potion_toggle_changed)
+            enabled_checkbox.toggled.connect(change_potion_toggle)
             # Collapse Button
             collapse_button = QPushButton()
-            collapse_button.setIcon(QIcon(self.up_chevron_svg) if potion_config["collapsed"] else QIcon(self.down_chevron_svg))
-            collapse_button.setFixedSize(45, 35)
-            collapse_button.setStyleSheet("color: cyan; background: #111; border: 1px solid cyan; font-size: 22px;")
             # Header Layout
             QHLayout.addWidget(title)
             QHLayout.addStretch()
@@ -929,46 +945,47 @@ class Dark_Sol(QMainWindow):
                 btn = f"add button {i}"
                 label = potion_data["button names"][btn]
                 # Fill Buttons To Check Column (Left)
-                temp_checkbox1 = QCheckBox(label)
-                temp_checkbox1.setStyleSheet("color: cyan; font-size: 14px;")
-                temp_checkbox1.setChecked(btn in potion_config["buttons to check"])
-                temp_checkbox1.setProperty("potion", potion)
-                temp_checkbox1.setProperty("list_key", "buttons to check")
-                temp_checkbox1.setProperty("btn", btn)
-                temp_checkbox1.toggled.connect(on_potion_list_toggle_changed)
-                left_column_QV_Layout.addWidget(temp_checkbox1)
+                buttons_to_check_checkbox = QCheckBox(label)
+                buttons_to_check_checkbox.setStyleSheet("color: cyan; font-size: 14px;")
+                buttons_to_check_checkbox.setChecked(btn in potion_config["buttons to check"])
+                buttons_to_check_checkbox.setProperty("potion", potion)
+                buttons_to_check_checkbox.setProperty("list_key", "buttons to check")
+                buttons_to_check_checkbox.setProperty("btn", btn)
+                buttons_to_check_checkbox.toggled.connect(change_potion_list)
+                left_column_QV_Layout.addWidget(buttons_to_check_checkbox)
                 # Fill Additional Buttons To Click Column (Right)
-                temp_checkbox2 = QCheckBox(label)
-                temp_checkbox2.setStyleSheet("color: cyan; font-size: 14px;")
-                temp_checkbox2.setChecked(btn in potion_config["additional buttons to click"])
-                temp_checkbox2.setProperty("potion", potion)
-                temp_checkbox2.setProperty("list_key", "additional buttons to click")
-                temp_checkbox2.setProperty("btn", btn)
-                temp_checkbox2.toggled.connect(on_potion_list_toggle_changed)
-                right_column_QV_Layout.addWidget(temp_checkbox2)
+                addition_buttons_to_click_checkbox = QCheckBox(label)
+                addition_buttons_to_click_checkbox.setStyleSheet("color: cyan; font-size: 14px;")
+                addition_buttons_to_click_checkbox.setChecked(btn in potion_config["additional buttons to click"])
+                addition_buttons_to_click_checkbox.setProperty("potion", potion)
+                addition_buttons_to_click_checkbox.setProperty("list_key", "additional buttons to click")
+                addition_buttons_to_click_checkbox.setProperty("btn", btn)
+                addition_buttons_to_click_checkbox.toggled.connect(change_potion_list)
+                right_column_QV_Layout.addWidget(addition_buttons_to_click_checkbox)
             columns_QH_Layout.addWidget(left_column)
             columns_QH_Layout.addStretch(1)
             columns_QH_Layout.addWidget(right_column)
             QVLayout.addWidget(body)
 
-            # Collapse wiring (hide/show only the selections body)
+            # Initial Visibility Setup
             collapsed = potion_config["collapsed"]
             body.setVisible(potion_config["enabled"] and not collapsed)
             instant_craft_checkbox.setVisible(potion_config["enabled"] and not collapsed)
+            # Collapse Button Setup
+            collapse_button.setStyleSheet("color: cyan; background: #111; border: 1px solid cyan; font-size: 22px;")
+            collapse_button.setEnabled(potion_config["enabled"])
+            collapse_button.setIconSize(QSize(45, 35))
             collapse_button.setProperty("potion", potion)
             collapse_button.setProperty("body", body)
-            collapse_button.setProperty("instant", instant_craft_checkbox)
+            collapse_button.setProperty("instant craft", instant_craft_checkbox)
             collapse_button.setProperty("cb enabled", enabled_checkbox)
-            collapse_button.clicked.connect(on_potion_collapse_clicked)
-
-            collapse_button.setEnabled(potion_config["enabled"])
-            collapse_button.setIcon(QIcon(self.down_chevron_svg) if potion_config["enabled"] and not collapsed else QIcon(self.up_chevron_svg))
-            collapse_button.setIconSize(QSize(30, 75))
-
+            check_collapsed_state(collapse_button, potion_config)
+            collapse_button.clicked.connect(collapse_potion)
+            # Enabled Checkbox 
             enabled_checkbox.setProperty("body", body)
-            enabled_checkbox.setProperty("instant", instant_craft_checkbox)
+            enabled_checkbox.setProperty("instant craft", instant_craft_checkbox)
             enabled_checkbox.setProperty("collapse button", collapse_button)
-            enabled_checkbox.toggled.connect(on_enabled_ui_changed)
+            enabled_checkbox.toggled.connect(potion_enabled)
 
             self.presets_tab_content_layout.addWidget(potion_section)
 
@@ -1432,13 +1449,7 @@ class Dark_Sol(QMainWindow):
         for item in data["item data"].keys():
                 if config["item presets"][self.current_preset][item]["enabled"]:
                     macro_loop_iteration(item)
-    
-    def start_settings(self):
-        if "--reset_config" in sys.argv:
-            global config
-            config = hidden_config
-            nice_config_save()
-                
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     loader = loading_screen()
