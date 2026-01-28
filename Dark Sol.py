@@ -354,7 +354,7 @@ class loading_screen(QWidget):
         parts_to_load = 3
         self.loading_bar = QProgressBar(self)
         self.setWindowTitle("Loading Dark Sol")
-        self.setStyleSheet(""" QProgressBar {background-color: black; color: white; border-radius: 5px; border: 1px solid black; font-size: 20px; height: 40px;} QProgressBar::chunk {background-color: lime; }""")
+        self.setStyleSheet(""" QProgressBar {background-color: black; color: white; border-radius: 5px; border: 1px solid black; font-size: 15pt; height: 40px;} QProgressBar::chunk {background-color: lime; }""")
         self.setGeometry(0, 0, 500, 100)
         self.loading_bar.setGeometry(0, 0, 500, 100)
         self.loading_bar.setRange(0, parts_to_load)
@@ -478,13 +478,13 @@ class Dark_Sol(QMainWindow):
         self.main_tab.setLayout(main_tab_vbox)
         #Set Presets Tab Layout
         self.preset_selector.addItems(list(config["item presets"].keys()) + ["Create New Preset"])
-        self.preset_selector.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
+        self.preset_selector.setStyleSheet("color: cyan; background: #111; font-size: 18pt; padding: 6px;")
         self.preset_selector.setMinimumHeight(52)
         self.preset_selector.blockSignals(True)
         self.preset_selector.setCurrentText(self.current_preset)
         self.preset_selector.blockSignals(False)
-        self.rename_preset_button.setStyleSheet("color: cyan; background: #111; font-size: 24px; padding: 6px;")
-        self.delete_preset_button.setStyleSheet("color: red; background: #111; font-size: 24px; padding: 6px; border: 1px solid red;")
+        self.rename_preset_button.setStyleSheet("color: cyan; background: #111; font-size: 18pt; padding: 6px;")
+        self.delete_preset_button.setStyleSheet("color: red; background: #111; font-size: 18pt; padding: 6px; border: 1px solid red;")
         presets_header = QWidget()
         presets_header_layout = QHBoxLayout(presets_header)
         presets_header_layout.setContentsMargins(0, 0, 0, 0)
@@ -504,8 +504,8 @@ class Dark_Sol(QMainWindow):
         self.presets_tab_main_vbox.addWidget(self.presets_tab_scroller)
         self.presets_tab.setStyleSheet("""
                     QWidget { background-color: black; }
-                    QLabel { color: cyan; font-size: 18px; }
-                    QCheckBox { color: cyan; font-size: 14px; }
+                    QLabel { color: cyan; font-size: 14pt; }
+                    QCheckBox { color: cyan; font-size: 11pt; }
                     QScrollArea { border: 0px; }
                 """)
         self.presets_tab.setLayout(self.presets_tab_main_vbox)
@@ -549,8 +549,8 @@ class Dark_Sol(QMainWindow):
         manual_layout.addWidget(self.set_craft_button_coordinates)
         manual_layout.addWidget(self.set_search_bar_coordinates)
         manual_layout.addWidget(self.set_potion_selection_button_coordinates)
-        self.add_button_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 30px;}")
-        self.amount_box_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 30px;}")
+        self.add_button_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 22pt;}")
+        self.amount_box_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 22pt;}")
         self.add_button_coordinates_selector.adjustSize()
         self.amount_box_coordinates_selector.adjustSize()
         # Calibration Pages Setup
@@ -578,8 +578,8 @@ class Dark_Sol(QMainWindow):
         #Status Label Setup
         self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
         self.mini_status_widget.setStyleSheet("background-color: black; border: 2px solid cyan; border-radius: 6px;")
-        self.general_mini_status_label.setStyleSheet("color: cyan; font-size: 20px;")
-        self.mini_status_label.setStyleSheet("color: cyan; font-size: 20px;")
+        self.general_mini_status_label.setStyleSheet("color: cyan; font-size: 15pt;")
+        self.mini_status_label.setStyleSheet("color: cyan; font-size: 15pt;")
         self.mini_status_qv = QVBoxLayout(self.mini_status_widget)
         self.mini_status_qv.setContentsMargins(0, 0, 0, 0)
         self.mini_status_qv.addWidget(self.general_mini_status_label)
@@ -599,12 +599,12 @@ class Dark_Sol(QMainWindow):
             QTabBar::tab:selected { background-color: black; }
             QTabBar {color: cyan;}
             QWidget {background-color: black;}
-            QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 20px;}
-            QPushButton#start_button {font-size: 30px;}
-            QPushButton#stop_button {font-size: 30px;}
-            QWidget#calibrations_tab QPushButton {font-size: 30px;}
-            QLabel {color: cyan; font-size: 18px;}
-            QLabel#status_label {color: cyan; font-size: 50px;}
+            QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}
+            QPushButton#start_button {font-size: 22pt;}
+            QPushButton#stop_button {font-size: 22pt;}
+            QWidget#calibrations_tab QPushButton {font-size: 22pt;}
+            QLabel {color: cyan; font-size: 14pt;}
+            QLabel#status_label {color: cyan; font-size: 38pt;}
         """)
         # Setup  Hotkeys
         self.start_button.clicked.connect(self.start_macro)
@@ -710,13 +710,13 @@ class Dark_Sol(QMainWindow):
             dialog.setWindowTitle("Delete Preset")
             layout = QVBoxLayout(dialog)
             warning_label = QLabel(f'Are you sure you want to delete "{preset_name}" this cannot be undone.')
-            warning_label.setStyleSheet("color: red; font-size: 18px;")
+            warning_label.setStyleSheet("color: red; font-size: 14pt;")
             layout.addWidget(warning_label)
             label = QLabel("Select the preset you want to switch to:")
-            label.setStyleSheet("font-size: 18px;")
+            label.setStyleSheet("font-size: 14pt;")
             layout.addWidget(label)
             next_selector = QComboBox()
-            next_selector.setStyleSheet("color: cyan; background: #111; font-size: 18px; padding: 6px;")
+            next_selector.setStyleSheet("color: cyan; background: #111; font-size: 14pt; padding: 6px;")
             next_selector.addItem("-- Select preset --")
             next_selector.addItems(remaining_presets)
             layout.addWidget(next_selector)
@@ -739,7 +739,7 @@ class Dark_Sol(QMainWindow):
                 msg.setIcon(QMessageBox.Icon.Warning)
                 msg.setWindowTitle("Select Preset")
                 msg.setText("Select the preset you want to switch to first.")
-                msg.setStyleSheet("QLabel{font-size: 12px;}")
+                msg.setStyleSheet("QLabel{font-size: 9pt;}")
                 msg.exec()
                 continue
 
@@ -783,7 +783,7 @@ class Dark_Sol(QMainWindow):
     def build_potions_ui(self):
         def checkbox_into_toggler(checkbox: QCheckBox):
             checkbox.setStyleSheet("""
-                QCheckBox { color: cyan; font-size: 16px; spacing: 8px; }
+                QCheckBox { color: cyan; font-size: 12pt; spacing: 8px; }
                 QCheckBox::indicator { width: 44px; height: 22px; border-radius: 11px; }
                 QCheckBox::indicator:unchecked { background-color: #222; border: 1px solid cyan; }
                 QCheckBox::indicator:checked { background-color: #0aa; border: 1px solid cyan; }
@@ -889,7 +889,7 @@ class Dark_Sol(QMainWindow):
             QHLayout = QHBoxLayout(potion_header)
             QHLayout.setContentsMargins(0, 0, 0, 0)
             title = QLabel(potion.capitalize())
-            title.setStyleSheet("color: cyan; font-size: 24px;")
+            title.setStyleSheet("color: cyan; font-size: 18pt;")
             # Instant Craft Checkbox
             instant_craft_checkbox = QCheckBox("Instant Craft")
             instant_craft_checkbox.setChecked(bool(potion_config["instant craft"]))
@@ -928,7 +928,7 @@ class Dark_Sol(QMainWindow):
             left_column_QV_Layout.setContentsMargins(0, 0, 0, 0)
             left_column_QV_Layout.setSpacing(4)
             left_title = QLabel("Buttons To Check")
-            left_title.setStyleSheet("color: cyan; font-size: 20px;")
+            left_title.setStyleSheet("color: cyan; font-size: 15pt;")
             left_column_QV_Layout.addWidget(left_title)
             # Additional Buttons To Click Column (Right)
             right_column = QWidget()
@@ -937,7 +937,7 @@ class Dark_Sol(QMainWindow):
             right_column_QV_Layout.setContentsMargins(0, 0, 0, 0)
             right_column_QV_Layout.setSpacing(4)
             right_title = QLabel("Additional Buttons To Click")
-            right_title.setStyleSheet("color: cyan; font-size: 20px;")
+            right_title.setStyleSheet("color: cyan; font-size: 15pt;")
             right_column_QV_Layout.addWidget(right_title)
     
             slots = int(potion_config["crafting slots"])
@@ -946,7 +946,7 @@ class Dark_Sol(QMainWindow):
                 label = potion_data["button names"][btn]
                 # Fill Buttons To Check Column (Left)
                 buttons_to_check_checkbox = QCheckBox(label)
-                buttons_to_check_checkbox.setStyleSheet("color: cyan; font-size: 14px;")
+                buttons_to_check_checkbox.setStyleSheet("color: cyan; font-size: 11pt;")
                 buttons_to_check_checkbox.setChecked(btn in potion_config["buttons to check"])
                 buttons_to_check_checkbox.setProperty("potion", potion)
                 buttons_to_check_checkbox.setProperty("list_key", "buttons to check")
@@ -955,7 +955,7 @@ class Dark_Sol(QMainWindow):
                 left_column_QV_Layout.addWidget(buttons_to_check_checkbox)
                 # Fill Additional Buttons To Click Column (Right)
                 addition_buttons_to_click_checkbox = QCheckBox(label)
-                addition_buttons_to_click_checkbox.setStyleSheet("color: cyan; font-size: 14px;")
+                addition_buttons_to_click_checkbox.setStyleSheet("color: cyan; font-size: 11pt;")
                 addition_buttons_to_click_checkbox.setChecked(btn in potion_config["additional buttons to click"])
                 addition_buttons_to_click_checkbox.setProperty("potion", potion)
                 addition_buttons_to_click_checkbox.setProperty("list_key", "additional buttons to click")
@@ -972,7 +972,7 @@ class Dark_Sol(QMainWindow):
             body.setVisible(potion_config["enabled"] and not collapsed)
             instant_craft_checkbox.setVisible(potion_config["enabled"] and not collapsed)
             # Collapse Button Setup
-            collapse_button.setStyleSheet("color: cyan; background: #111; border: 1px solid cyan; font-size: 22px;")
+            collapse_button.setStyleSheet("color: cyan; background: #111; border: 1px solid cyan; font-size: 16pt;")
             collapse_button.setEnabled(potion_config["enabled"])
             collapse_button.setIconSize(QSize(45, 35))
             collapse_button.setProperty("potion", potion)
