@@ -7,32 +7,31 @@
 3. Add auto updater
 4. Make all hardcoded resolutions dynamic
 5. Improve gui
-# Start Arguments
 6. Add main and auto updater reinstall arguements
+7. Add debug log
 - Mini Status Label
-7. Make Mini Status Label movable (when moving make it show largest size)
+8. Make Mini Status Label movable (when moving make it show largest size)
 
 # Might be added for First Release:
-8. Advanced auto updater (with progress bar)
-9. Add settings tab functionality
-
+9. Advanced auto updater (with progress bar)
+10. Add settings tab functionality
 # Planned for the future:
-10. Fix other widgets not closing properly
-11. Add multi template for single location
-12. Add actual logger
-13. Make plugins system
-14. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
-15. Able to handle corrupt config
-16. Add config backups
-17. Add importing / exporting presets
-18. Add importing / exporting themes
-19. Add ability to change hotkeys
-20. Add Logging System
-21. Make it so that it can add in 1's instead of just the amount numbers
-22. Complete auto find template function
-23. Add custom log messages (ability for certain logs to not show)
+11. Fix other widgets not closing properly
+12. Add multi template for single location
+13. Add actual logger
+14. Make plugins system
+15. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
+16. Able to handle corrupt config
+17. Add config backups
+18. Add importing / exporting presets
+19. Add importing / exporting themes
+20. Add ability to change hotkeys
+21. Add Logging System
+22. Make it so that it can add in 1's instead of just the amount numbers
+23. Complete auto find template function
+24. Add custom log messages (ability for certain logs to not show)
 - Mini Status Label
-24. Make mini status label show auto add waitlist and add setting for it 
+25. Make mini status label show auto add waitlist and add setting for it 
 
 # Start Arguments
 --reset_config: Resets config to default settings
@@ -44,14 +43,15 @@
 
 # Dev Tools
 use_built_in_config = False
+dont_load_ocr = False
 # DPI Setup
 import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 # Imports
-import os, sys, threading, pyautogui, time, ctypes, pathlib, json
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize
-from PyQt6.QtGui import QIcon, QPixmap
+import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QRubberBand
+from PyQt6.QtGui import QIcon, QColor, QGuiApplication, QPainter, QPen
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PIL import Image, ImageDraw, ImageGrab
 from mousekey import MouseKey
@@ -123,82 +123,76 @@ def nice_config_save(ind=4):
 
 hidden_config = {
             "data": {
-                "scroll amounts":{
-                "to_4": 18,
-                "past_4": 40
-                }
+                "scroll amounts": {"to_4": 20, "past_4": 42}
             },
-
             "positions": {
                 "add button 1": {"bbox": [757, 656, 837, 688], "center": [797, 672]},
                 "add button 2": {"bbox": [757, 711, 837, 743], "center": [797, 727]},
                 "add button 3": {"bbox": [757, 765, 837, 797], "center": [797, 781]},
                 "add button 4": {"bbox": [757, 794, 837, 826], "center": [797, 810]},
-                "amount box 1": [715, 672],
-                "amount box 2": [715, 726],
-                "amount box 3": [715, 780],
-                "amount box 4": [715, 810],
-                "potion selection button": [1146, 460],
-                "search bar": [1137, 381],
-                "auto add button": {"bbox": [646, 600, 768, 636], "center": [707, 618]},
-                "craft button": [573, 618]
+                "amount box 1": {"bbox": [677, 659, 754, 686], "center": [715, 672]},
+                "amount box 2": {"bbox": [677, 713, 754, 740], "center": [715, 726]},
+                "amount box 3": {"bbox": [677, 767, 754, 794], "center": [715, 780]},
+                "amount box 4": {"bbox": [677, 797, 754, 824], "center": [715, 810]},
+                "potion selection button": {"bbox": [871, 410, 1422, 510], "center": [1146, 460]},
+                "search bar": {"bbox": [855, 365, 1438, 397], "center": [1146, 381]},
+                "auto add button": {"bbox": [646, 601, 768, 637], "center": [707, 619]},
+                "craft button": {"bbox": [511, 599, 636, 637], "center": [573, 618]}
             },
-
             "current_preset": "Main",
-
             "item presets": {
-                    "Main": {
-                        "bound": {
-                            "buttons to check": ["add button 1"],
-                            "additional buttons to click": ["add button 4"],
-                            "crafting slots": 4,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "heavenly": {
-                            "buttons to check": ["add button 2"],
-                            "additional buttons to click": ["add button 1"],
-                            "crafting slots": 5,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "zeus": {
-                            "buttons to check": ["add button 3"],
-                            "additional buttons to click": ["add button 1", "add button 2"],
-                            "crafting slots": 5,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "poseidon": {
-                            "buttons to check": ["add button 2"],
-                            "additional buttons to click": ["add button 1"],
-                            "crafting slots": 4,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "hades": {
-                            "buttons to check": ["add button 2"],
-                            "additional buttons to click": ["add button 1"],
-                            "crafting slots": 4,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "warp": {
-                            "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
-                            "additional buttons to click": ["add button 1", "add button 2"],
-                            "crafting slots": 6,
-                            "instant craft": False,
-                            "enabled": False,
-                            "collapsed": False
-                        }
+                "Main": {
+                    "bound": {
+                        "buttons to check": ["add button 1"],
+                        "additional buttons to click": ["add button 4"],
+                        "crafting slots": 4,
+                        "instant craft": False,
+                        "enabled": False,
+                        "collapsed": False
+                    },
+                    "heavenly": {
+                        "buttons to check": ["add button 2", "add button 3"],
+                        "additional buttons to click": ["add button 1"],
+                        "crafting slots": 5,
+                        "instant craft": False,
+                        "enabled": True,
+                        "collapsed": True
+                    },
+                    "zeus": {
+                        "buttons to check": ["add button 3"],
+                        "additional buttons to click": ["add button 1", "add button 2"],
+                        "crafting slots": 5,
+                        "instant craft": False,
+                        "enabled": True,
+                        "collapsed": True
+                    },
+                    "poseidon": {
+                        "buttons to check": ["add button 2"],
+                        "additional buttons to click": ["add button 1"],
+                        "crafting slots": 4,
+                        "instant craft": False,
+                        "enabled": True,
+                        "collapsed": True
+                    },
+                    "hades": {
+                        "buttons to check": ["add button 2"],
+                        "additional buttons to click": ["add button 1"],
+                        "crafting slots": 4,
+                        "instant craft": False,
+                        "enabled": True,
+                        "collapsed": True
+                    },
+                    "warp": {
+                        "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
+                        "additional buttons to click": ["add button 1", "add button 2"],
+                        "crafting slots": 6,
+                        "instant craft": False,
+                        "enabled": False,
+                        "collapsed": False
                     }
                 }
             }
+        }
             
 if CONFIG_PATH.exists() and not use_built_in_config:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -214,6 +208,7 @@ data = {
                         "scale": 1.25,
                         "resolution": (1920, 1080),
                         "confidence": 0.7,
+                        "scroll check confidence": 0.5,
                         "config position name": [
                             "add button 1",
                             "add button 2",
@@ -256,6 +251,7 @@ data = {
                         "confidence": 0.75,
                         "config position name": "potion selection button"
                         },
+                    
                     },
             "item data": {
                     "bound": {
@@ -338,16 +334,19 @@ class loading_thread(QThread):
     finished = pyqtSignal()
     progress = pyqtSignal(str, int)
     def run(self):
-        self.progress.emit("Settings Import Properties (%p%)", 0)
-        global easyocr, reader
-        self.progress.emit("Import Properties Set (%p%)", 1)
-        self.progress.emit("Importing EasyOCR (%p%)", 1)
-        import easyocr
-        self.progress.emit("EasyOCR Imported (%p%)", 2)
-        self.progress.emit("Initializing EasyOCR (%p%)", 2)
-        reader = easyocr.Reader(['en'])
-        self.progress.emit("EasyOCR Initialized (%p%)", 3)
-        self.finished.emit()
+        if not dont_load_ocr:
+            self.progress.emit("Settings Import Properties (%p%)", 0)
+            global easyocr, reader
+            self.progress.emit("Import Properties Set (%p%)", 1)
+            self.progress.emit("Importing EasyOCR (%p%)", 1)
+            import easyocr
+            self.progress.emit("EasyOCR Imported (%p%)", 2)
+            self.progress.emit("Initializing EasyOCR (%p%)", 2)
+            reader = easyocr.Reader(['en'])
+            self.progress.emit("EasyOCR Initialized (%p%)", 3)
+            self.finished.emit()
+        else:
+            self.finished.emit()
 class loading_screen(QWidget):
     def __init__(self):
         super().__init__()
@@ -412,7 +411,10 @@ class Dark_Sol(QMainWindow):
         # Create Calibration Tab Elements
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
+        self.show_calibration_overlays_button = QPushButton("Show Calibration Overlays")
+        self.calibrations_overlay_active = False
         # Auto Calibration Mode
+        self.auto_calibrate_button = QPushButton("Auto Calibrate")
         self.find_add_button = QPushButton("Find Add Buttons")
         self.find_amount_box = QPushButton("Find Amount Boxes")
         self.find_auto_add_button = QPushButton("Find Auto Add Button")
@@ -458,7 +460,7 @@ class Dark_Sol(QMainWindow):
         self.macro_stopped_signal.connect(self.on_macro_stopped)
         self.status_signal.connect(self.update_status)
         self.init_ui()
-        
+
     def init_ui(self):
         # Initialize Tabs
         self.setCentralWidget(self.tabs_widget)
@@ -518,6 +520,7 @@ class Dark_Sol(QMainWindow):
         auto_calibration_page = QWidget()
         auto_layout = QVBoxLayout(auto_calibration_page)
         auto_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        auto_layout.addWidget(self.auto_calibrate_button)
         auto_layout.addWidget(self.find_add_button)
         auto_layout.addWidget(self.find_amount_box)
         auto_layout.addWidget(self.find_auto_add_button)
@@ -558,23 +561,25 @@ class Dark_Sol(QMainWindow):
         self.calibrations_stack.addWidget(semi_auto_calibration_page)  # index 1
         self.calibrations_stack.addWidget(manual_calibration_page)     # index 2
         self.calibrations_tab_main_vbox.addWidget(self.calibration_mode_button)
+        self.calibrations_tab_main_vbox.addWidget(self.show_calibration_overlays_button)
         self.calibrations_tab_main_vbox.addWidget(self.calibrations_stack)
         self.calibrations_stack.setCurrentIndex(0)
         self.calibrations_tab.setLayout(self.calibrations_tab_main_vbox)
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
+        self.show_calibration_overlays_button.clicked.connect(self.show_calibration_overlays)
+        self.auto_calibrate_button.clicked.connect(self.auto_calibrate)
         self.set_add_button_coordinates.clicked.connect(lambda: self.add_button_coordinates_selector.show())
         self.set_amount_box_coordinates.clicked.connect(lambda: self.amount_box_coordinates_selector.show())
-        self.find_add_button.clicked.connect(lambda: self.choose_kept_matches("add button.png", True, True, True))
+        self.find_add_button.clicked.connect(lambda: self.choose_kept_matches("add button.png", True, True))
         self.find_amount_box.clicked.connect(lambda: self.choose_kept_matches("amount box.png", True, True))
-        self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True, bbox_required=True))
+        self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True))
         self.find_craft_button.clicked.connect(lambda: self.auto_find_image("craft button.png", True))
         self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True))
         self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("heavenly potion potion selector button.png", True))
         self.calibrate_scrolls_button.clicked.connect(self.calibrate_scrolling)
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
-        self.delete_preset_button.clicked.connect(self.delete_preset)
         #Status Label Setup
         self.mini_status_widget.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
         self.mini_status_widget.setStyleSheet("background-color: black; border: 2px solid cyan; border-radius: 6px;")
@@ -1005,6 +1010,85 @@ class Dark_Sol(QMainWindow):
             self.calibration_mode_button.setText("Current Mode: Automatic Calibration")
             self.calibration_mode = "auto"
         
+    def show_calibration_overlays(self):
+            for calibration in config["positions"].keys():
+                try:
+                    bbox = config["positions"][calibration]["bbox"]
+                except TypeError or KeyError:
+                    bbox = None
+                if  bbox is not None:
+                    if self.calibrations_overlay_active:
+                        self.create_overlay(bbox, disabled=True)
+                        self.calibrations_overlay_active = False
+                    else:
+                        self.create_overlay(bbox, text=calibration)
+                        self.calibrations_overlay_active = True
+
+    def auto_calibrate(self):
+        if not self.focus_roblox():
+            QMessageBox.warning(self, "Roblox Not Found", "Could not find a Roblox window. Please make sure Roblox is running.")
+            return
+        self.auto_find_image("cauldren search bar.png", True)
+        self.move_and_click(config["positions"]["search bar"]["center"])
+        keyboard.Controller().type("heavenly potion")
+        self.auto_find_image("heavenly potion potion selector button.png", True)
+        self.move_and_click(config["positions"]["search bar"]["center"])
+        keyboard.Controller().type("jewelry potion")
+        self.move_and_click(config["positions"]["potion selection button"]["center"])
+        temp_add_button = pyautogui.locateOnScreen(f"{local_appdata_directory}\\Lib\\Images\\amount box.png", confidence=data["img data"]["amount box.png"]["confidence"])
+        if temp_add_button is None:
+            return
+        self.move_and_click(pyautogui.center(temp_add_button), False)
+        pyautogui.scroll(2000)
+        self.auto_find_image("add button.png", True, True)
+        self.auto_find_image("amount box.png", True, True)
+        self.move_and_click(config["positions"]["add button 1"]["center"])
+        pyautogui.scroll(-2000)
+        self.auto_find_image("add button.png", True, True, add_start_index=(1, (3,)))
+        self.auto_find_image("amount box.png", True, True, add_start_index=(1, (3,)))
+        self.auto_find_image("craft button.png", True)
+        self.auto_find_image("auto add button.png", True)
+        pyautogui.scroll(2000)
+        self.calibrate_scrolling()
+        self.show_calibration_overlays()
+        time.sleep(10)
+        self.show_calibration_overlays()
+
+
+    def focus_roblox(self):
+        allowed = {"WINDOWSCLIENT", "ROBLOXPLAYERBETA", "ROBLOXAPP"}
+        roblox_hwnd, found_window = None, False
+
+        def enum_handler(hwnd, lParam):
+            nonlocal roblox_hwnd
+            if not win32gui.IsWindowVisible(hwnd):
+                return
+
+            window_name = win32gui.GetWindowText(hwnd) or None
+            class_name = win32gui.GetClassName(hwnd) or None
+
+            if window_name is None or class_name is None:
+                return
+            
+            if "roblox" in window_name.lower():
+                print(f"Found Roblox window: '{window_name}' class: '{class_name}'")
+                found_window = True
+
+            if class_name.upper() in allowed and "roblox" in window_name.lower():
+                roblox_hwnd = hwnd
+
+        win32gui.EnumWindows(enum_handler, None)
+
+        if roblox_hwnd is None:
+            print("Roblox window not found." if not found_window else "Roblox window found, but has incorrect class.")
+            return False
+
+        # Only restore if minimized (avoids breaking fullscreen)
+        if win32gui.IsIconic(roblox_hwnd):
+            win32gui.ShowWindow(roblox_hwnd, win32con.SW_RESTORE)
+        win32gui.SetForegroundWindow(roblox_hwnd)
+        return True
+
     def hotkey_listener(self):
         def on_press(key):
             if key == keyboard.Key.f1:
@@ -1020,7 +1104,7 @@ class Dark_Sol(QMainWindow):
         self.stop_macro_signal.connect(self.stop_macro)
         threading.Thread(target=self.hotkey_listener, daemon=True).start()
 
-    def choose_kept_matches(self, template, save=False, multiple=False, bbox_required=False):
+    def choose_kept_matches(self, template, save=False, multiple=False, bbox_required=True):
         what_selections = QMessageBox(self)
         what_selections.setWindowTitle("Match Selector")
 
@@ -1029,7 +1113,7 @@ class Dark_Sol(QMainWindow):
         elif template == "amount box.png":
             what_selections.setText("Are the amount box(es) 1–3 or 4?")
 
-        btn_1_3 = what_selections.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
+        what_selections.addButton("1–3", QMessageBox.ButtonRole.AcceptRole)
         btn_4  = what_selections.addButton("4",   QMessageBox.ButtonRole.AcceptRole)
         what_selections.exec()
 
@@ -1039,6 +1123,92 @@ class Dark_Sol(QMainWindow):
             add_start_index = None
 
         self.auto_find_image(template, save=save, multiple=multiple, bbox_required=bbox_required, add_start_index=add_start_index)
+
+    def create_overlay(self, bbox=None, color=(0,255,0,255), text=None, text_color=None, font_size=10, thickness=3, disabled=False):
+        overlay_windows = getattr(self, "active overlays", None)
+
+        if text_color is None:
+            text_color = color
+
+        if overlay_windows is None:
+            overlay_windows = {}
+            setattr(self, "active overlays", overlay_windows)
+
+        if disabled:
+            for overlay_window in overlay_windows.values():
+                overlay_window.close()
+            overlay_windows.clear()
+            return
+        
+        if bbox == None:
+            return
+        
+        overlay_key = tuple(bbox)
+        if overlay_key in overlay_windows:
+            print("Overlay already exists for this region.")
+            return
+
+        x, y, x2, y2 = bbox
+        w = x2 - x
+        h = y2 - y
+
+        user32 = ctypes.windll.user32
+        gdi32 = ctypes.windll.gdi32
+        hdc = user32.GetDC(0)
+        LOGPIXELSX = 88
+        dpi = gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
+        scaling = dpi / 96.0
+
+        # Scale coordinates for logical/physical match
+        x_scaled = int(x / scaling)
+        y_scaled = int(y / scaling)
+        w_scaled = int(w / scaling)
+        h_scaled = int(h / scaling)
+
+        screen = QGuiApplication.screenAt(QPoint(x_scaled + w_scaled // 2, y_scaled + h_scaled // 2))
+        if screen is None:
+            QMessageBox.warning(self, "Screen Not Found", "Could not find a screen at the specified coordinates.")
+            return
+        screen_geometry = screen.geometry()
+
+        overlay_window = QWidget()
+        overlay_window.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        overlay_window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        overlay_window.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        overlay_window.setGeometry(screen_geometry)
+        overlay_window.show()
+        overlay_window.raise_()
+
+        local_x = x_scaled - screen_geometry.x()
+        local_y = y_scaled - screen_geometry.y()
+
+        outline_frame = QFrame(overlay_window)
+        outline_frame.setGeometry(QRect(local_x, local_y, w_scaled, h_scaled))
+
+        if isinstance(color, tuple):
+            outline_frame.setStyleSheet(f"background: transparent; border: {thickness}px solid rgba({color[0]},{color[1]},{color[2]},{color[3] if len(color) == 4 else 255});")
+        elif isinstance(color, str):
+            outline_frame.setStyleSheet(f"background: transparent; border: {thickness}px solid {color};")
+
+        outline_frame.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        outline_frame.show()
+        outline_frame.raise_()
+
+        if text:
+            label = QLabel(text, overlay_window)
+            label.move(local_x, local_y - label.height() - 4)
+
+            if isinstance(text_color, tuple):
+                label.setStyleSheet(f"color: rgba({text_color[0]},{text_color[1]},{text_color[2]},{text_color[3] if len(text_color) == 4 else 255}); background: transparent; font-size: {font_size}pt;")
+            elif isinstance(text_color, str):
+                label.setStyleSheet(f"color: {text_color}; background: transparent; font-size: {font_size}pt;")
+
+            label.adjustSize()
+            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+            label.show()
+            label.raise_()
+
+        overlay_windows[overlay_key] = overlay_window
 
     def find_pixels_with_color(self, *targets, bbox=None):
         if bbox == None:
@@ -1091,14 +1261,24 @@ class Dark_Sol(QMainWindow):
                 template_scaled = template_img.resize((int(template_img.width * total_scale_x), int(template_img.height * total_scale_y)), Image.Resampling.LANCZOS)
                 return template_scaled
     
-    def auto_find_image(self, template, save=False, multiple=False, bbox_required=False, add_start_index=None):
-            add_start_index = None
+    def auto_find_image(self, template, save=False, multiple=False, bbox_required=True,  show_all_matches=False, add_start_index=None):
             template_path = f"{local_appdata_directory}\\Lib\\Images\\{template}"
+            found_matches_screen = []
              
             def save_position(position_name, center, bbox):
                 if not save:
                     return
-                if QMessageBox.information(self, "Template Found", "Would you like to save the found coordinates", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+                save_message_box = QMessageBox()
+                save_message_box.setWindowTitle("Save Position")
+                save_message_box.setText(f"Save position for '{position_name}'?")
+                save_button = save_message_box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
+                save_message_box.addButton("No", QMessageBox.ButtonRole.RejectRole)
+                save_message_box.setStyleSheet("""QLabel {color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
+                save_message_box.show()
+                save_message_box.raise_()
+                save_message_box.activateWindow()
+                save_message_box.exec()
+                if save_message_box.clickedButton() != save_button:
                     return
                 if bbox != None:
                     config["positions"][position_name] = {"bbox": bbox, "center": center}
@@ -1109,9 +1289,6 @@ class Dark_Sol(QMainWindow):
                     
             def find_template():
                 count = 0
-                screen = ImageGrab.grab()
-                single_match_screen = screen.copy()
-                all_matches_screen = screen.copy()
                 bbox, center = None, None
             
                 try:
@@ -1121,9 +1298,9 @@ class Dark_Sol(QMainWindow):
                             bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))
                             center = (int(match.left + match.width // 2), int(match.top + match.height // 2))
                             print(f"  bbox : {bbox}, center: {center}")
-                            ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
-                            all_matches_screen.show()
+                            self.create_overlay(bbox, text=template)
                             save_position(data["img data"][template]["config position name"], center, bbox if bbox_required else None)
+                            self.create_overlay(bbox, text=template, disabled=True)
                         else:
                             print(f"No match found for template: {template_path}")
 
@@ -1133,38 +1310,55 @@ class Dark_Sol(QMainWindow):
                         sorted_matches = sorted(matches, key=lambda box: (box.top))
 
                         def get_image_data(match):
-                            nonlocal single_match_screen, bbox, center
+                            nonlocal bbox, center
                             bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))
                             center = (int(match.left + match.width // 2), int(match.top + match.height // 2))
                             print(f"  bbox : {bbox}, center: {center}")
-                            single_match_screen = screen.copy()
-                            ImageDraw.Draw(all_matches_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
-                            ImageDraw.Draw(single_match_screen).rectangle(((match.left, match.top), (match.left + match.width, match.top + match.height)), outline='lime')
-                            
+                            found_matches_screen.append(bbox)    
+
                         if add_start_index == None:
                             for count, match in enumerate(sorted_matches):
                                 print("1st to 3rd button logic")
                                 print(count)
                                 get_image_data(match)
-                                single_match_screen.show()
+                                self.create_overlay(bbox, text=template)
                                 save_position(data["img data"][template]["config position name"][count], center, bbox if bbox_required else None)
-                                
+                                self.create_overlay(bbox, text=template, disabled=True)
+
                         elif add_start_index != None:
                             for count, match in enumerate(sorted_matches, start=add_start_index[0]):
                                 print("4th button and up logic")
                                 print(count)
                                 get_image_data(match)
                                 if count in add_start_index[1]:
-                                    single_match_screen.show()
+                                    self.create_overlay(bbox, text=template)
                                     save_position(data["img data"][template]["config position name"][count], center, bbox if bbox_required else None)
+                                    self.create_overlay(bbox, text=template, disabled=True)
                         
-                except (pyscreeze_ImageNotFoundException, pyautogui.ImageNotFoundException):
-                    print(f"No matches found for template: {template_path}")
-                    QMessageBox.information(self, "Dark Sol", "No Matches Found")
-
-                except Exception as e:
-                    print(f"Error finding matches: {e}")
-                    QMessageBox.warning(self, "Dark Sol", f"Error Finding Matches:   {e}")
+                        if show_all_matches:
+                            for bbox in found_matches_screen:
+                                self.create_overlay(bbox, text=template)
+                            current_multi_image_find_verified_message_box = QMessageBox()
+                            current_multi_image_find_verified_message_box.setWindowTitle("Dark Sol")
+                            current_multi_image_find_verified_message_box.setStyleSheet("""QLabel {color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
+                            current_multi_image_find_verified_message_box.show()
+                            current_multi_image_find_verified_message_box.raise_()
+                            current_multi_image_find_verified_message_box.activateWindow()
+                            current_multi_image_find_verified_message_box.exec()
+                            self.create_overlay(text=template, disabled=True)
+                except Exception as exception:
+                    match_exception_message_box = QMessageBox()
+                    if exception == pyautogui.ImageNotFoundException or pyscreeze_ImageNotFoundException:
+                        print(f"No matches found for template: {template_path}")
+                        match_exception_message_box.setText(f"No Matches Found For: {data['img data'][template]['config position name']}")
+                    else:
+                        print(f"Error finding matches: {exception}")
+                        match_exception_message_box.setText(f"Error Finding Matches: {exception}")
+                    match_exception_message_box.setStyleSheet("""QLabel {color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
+                    match_exception_message_box.show()
+                    match_exception_message_box.raise_()
+                    match_exception_message_box.activateWindow()
+                    match_exception_message_box.exec()
                 count = 0
 
             template_scaled = self.rescale_template(template, template_path)
@@ -1180,7 +1374,7 @@ class Dark_Sol(QMainWindow):
                 img =ImageGrab.grab(config["positions"]["add button 4"]["bbox"])
                 if find:
                     try:
-                        pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["confidence"])
+                        pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["scroll check confidence"])
                         print("'Add' detected saving scroll amount:", scrolls)
                         found = True
                     except pyautogui.ImageNotFoundException:
@@ -1195,7 +1389,7 @@ class Dark_Sol(QMainWindow):
                     scrolls += 1
                 elif not find:
                     try:
-                        pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["confidence"])
+                        pyautogui.locate(template, img, confidence=data["img data"]["add button.png"]["scroll check confidence"])
                     except pyautogui.ImageNotFoundException:
                         print("'Moved away from previous add button")
                         gone = True
@@ -1208,7 +1402,7 @@ class Dark_Sol(QMainWindow):
 
         self.mini_status_widget.show()
         self.update_status("Calibrating scrolling")
-        self.move_and_click(config["positions"]["amount box 4"])
+        self.move_and_click(config["positions"]["amount box 4"]["center"])
         mkey.left_click()
         pyautogui.scroll(2000)
         config["data"]["scroll amounts"]["to_4"] = count_scrolls()
