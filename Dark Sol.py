@@ -33,10 +33,10 @@
 - Mini Status Label
 25. Make mini status label show auto add waitlist and add setting for it 
 
+--- IGNORE ---
 # Start Arguments
 --reset_config: Resets config to default settings
 
---- IGNORE ---
 # Completed (To write commit messages):
 
 """
@@ -239,13 +239,13 @@ data = {
                         "confidence": 0.75,
                         "config position name": "craft button"
                         },
-                    "cauldren search bar.png": {
+                    "potion search bar.png": {
                         "scale": 1.25,
                         "resolution": (1920, 1200),
                         "confidence": 0.75,
                         "config position name": "search bar"
                         },
-                    "heavenly potion potion selector button.png": {
+                    "jewelry potion selector.png": {
                         "scale": 1.25,
                         "resolution": (1920, 1200),
                         "confidence": 0.75,
@@ -575,8 +575,8 @@ class Dark_Sol(QMainWindow):
         self.find_amount_box.clicked.connect(lambda: self.choose_kept_matches("amount box.png", True, True))
         self.find_auto_add_button.clicked.connect(lambda: self.auto_find_image("auto add button.png", True))
         self.find_craft_button.clicked.connect(lambda: self.auto_find_image("craft button.png", True))
-        self.find_search_bar.clicked.connect(lambda: self.auto_find_image("cauldren search bar.png", True))
-        self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("heavenly potion potion selector button.png", True))
+        self.find_search_bar.clicked.connect(lambda: self.auto_find_image("potion search bar.png", True))
+        self.find_potion_selection_button.clicked.connect(lambda: self.auto_find_image("jewelry potion selector.png", True))
         self.calibrate_scrolls_button.clicked.connect(self.calibrate_scrolling)
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
@@ -1011,29 +1011,27 @@ class Dark_Sol(QMainWindow):
             self.calibration_mode = "auto"
         
     def show_calibration_overlays(self):
-            for calibration in config["positions"].keys():
-                try:
-                    bbox = config["positions"][calibration]["bbox"]
-                except TypeError or KeyError:
-                    bbox = None
-                if  bbox is not None:
-                    if self.calibrations_overlay_active:
-                        self.create_overlay(bbox, disabled=True)
-                        self.calibrations_overlay_active = False
-                    else:
-                        self.create_overlay(bbox, text=calibration)
-                        self.calibrations_overlay_active = True
+        for calibration in config["positions"].keys():
+            try:
+                bbox = config["positions"][calibration]["bbox"]
+            except TypeError or KeyError:
+                bbox = None
+                continue
+            if self.calibrations_overlay_active:
+                self.create_overlay(bbox, disabled=True)
+            else:
+                self.create_overlay(bbox, text=calibration)
+        self.calibrations_overlay_active = not self.calibrations_overlay_active
 
     def auto_calibrate(self):
         if not self.focus_roblox():
             QMessageBox.warning(self, "Roblox Not Found", "Could not find a Roblox window. Please make sure Roblox is running.")
             return
-        self.auto_find_image("cauldren search bar.png", True)
+        self.auto_find_image("potion search bar.png", True)
         self.move_and_click(config["positions"]["search bar"]["center"])
-        keyboard.Controller().type("heavenly potion")
-        self.auto_find_image("heavenly potion potion selector button.png", True)
-        self.move_and_click(config["positions"]["search bar"]["center"])
-        keyboard.Controller().type("jewelry potion")
+        keyboard.Controller().type("jewelry")
+        time.sleep(0.2)
+        self.auto_find_image("jewelry potion selector.png", True)
         self.move_and_click(config["positions"]["potion selection button"]["center"])
         temp_add_button = pyautogui.locateOnScreen(f"{local_appdata_directory}\\Lib\\Images\\amount box.png", confidence=data["img data"]["amount box.png"]["confidence"])
         if temp_add_button is None:
@@ -1053,7 +1051,6 @@ class Dark_Sol(QMainWindow):
         self.show_calibration_overlays()
         time.sleep(10)
         self.show_calibration_overlays()
-
 
     def focus_roblox(self):
         allowed = {"WINDOWSCLIENT", "ROBLOXPLAYERBETA", "ROBLOXAPP"}
@@ -1124,11 +1121,8 @@ class Dark_Sol(QMainWindow):
 
         self.auto_find_image(template, save=save, multiple=multiple, bbox_required=bbox_required, add_start_index=add_start_index)
 
-    def create_overlay(self, bbox=None, color=(0,255,0,255), text=None, text_color=None, font_size=10, thickness=3, disabled=False):
+    def create_overlay(self, bbox=None, color=(0,255,0,255), text=None, text_color="#00FF00", font_size=10, thickness=3, disabled=False):
         overlay_windows = getattr(self, "active overlays", None)
-
-        if text_color is None:
-            text_color = color
 
         if overlay_windows is None:
             overlay_windows = {}
@@ -1196,7 +1190,7 @@ class Dark_Sol(QMainWindow):
 
         if text:
             label = QLabel(text, overlay_window)
-            label.move(local_x, local_y - label.height() - 4)
+            
 
             if isinstance(text_color, tuple):
                 label.setStyleSheet(f"color: rgba({text_color[0]},{text_color[1]},{text_color[2]},{text_color[3] if len(text_color) == 4 else 255}); background: transparent; font-size: {font_size}pt;")
@@ -1204,6 +1198,7 @@ class Dark_Sol(QMainWindow):
                 label.setStyleSheet(f"color: {text_color}; background: transparent; font-size: {font_size}pt;")
 
             label.adjustSize()
+            label.move(local_x, local_y - label.height())
             label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
             label.show()
             label.raise_()
@@ -1467,7 +1462,7 @@ class Dark_Sol(QMainWindow):
         def add_to_button(button_to_add_to):
             print("Adding to:", button_to_add_to)
             if int(button_to_add_to[-1]) < 4:
-                self.move_and_click(config["positions"][f"amount box {int(button_to_add_to[-1])}"], False)
+                self.move_and_click(config["positions"][f"amount box {int(button_to_add_to[-1])}"]["center"], False)
                 print("Moved to", "amount box", button_to_add_to[-1])
                 pyautogui.scroll(2000)
                 print("Scrolled up")
@@ -1485,7 +1480,7 @@ class Dark_Sol(QMainWindow):
                 self.move_and_click(config["positions"][button_to_add_to]["center"])
                 print(f"{button_to_add_to} clicked")
             elif int(button_to_add_to[-1]) >= 4:
-                self.move_and_click(config["positions"]["amount box 4"], False)
+                self.move_and_click(config["positions"]["amount box 4"]["center"], False)
                 print("Moved to amount box 4 center")
                 pyautogui.scroll(2000)
                 print("Scrolled up")
@@ -1511,7 +1506,7 @@ class Dark_Sol(QMainWindow):
             img = None
             time.sleep(slowdown)
             if int(button_to_check[-1]) < 4:
-                self.move_and_click(config["positions"][f"amount box {int(button_to_check[-1])}"], False)
+                self.move_and_click(config["positions"][f"amount box {int(button_to_check[-1])}"]["center"], False)
                 print(f"Moved to amount box {int(button_to_check[-1])}")
                 pyautogui.scroll(2000)
                 print("Scrolled up")
@@ -1519,7 +1514,7 @@ class Dark_Sol(QMainWindow):
                 img = ImageGrab.grab(config["positions"][button_to_check]["bbox"])
                 print(f"{button_to_check} image captured")
             elif int(button_to_check[-1]) >= 4:
-                self.move_and_click(config["positions"]["amount box 4"], False)
+                self.move_and_click(config["positions"]["amount box 4"]["center"], False)
                 print("Moved to amount box 4")
                 pyautogui.scroll(2000)
                 print("Scrolled up")
@@ -1542,11 +1537,11 @@ class Dark_Sol(QMainWindow):
             return True
             
         def search_for_potion(potion):
-                self.move_and_click(config["positions"]["search bar"])
+                self.move_and_click(config["positions"]["search bar"]["center"])
                 print("Search bar clicked")
                 keyboard.Controller().type(data["item data"][potion]["name to search"])
                 print("Item searched:", data["item data"][potion]["name to search"].capitalize())
-                self.move_and_click(config["positions"]["potion selection button"], False)
+                self.move_and_click(config["positions"]["potion selection button"]["center"], False)
                 print("Moved to potion selection button")
                 pyautogui.scroll(2000)
                 print("Scrolled up")
@@ -1565,6 +1560,7 @@ class Dark_Sol(QMainWindow):
             return True
 
         def macro_loop_iteration(item):
+            self.focus_roblox()
             if item not in self.auto_add_waitlist and self.current_auto_add_potion != item:
                 self.log("Searching for:", item.capitalize())
                 search_for_potion(item)
@@ -1625,7 +1621,7 @@ class Dark_Sol(QMainWindow):
 
                 if item_ready:
                     self.log("Crafting:", item.capitalize())
-                    self.move_and_click(config["positions"]["craft button"])
+                    self.move_and_click(config["positions"]["craft button"]["center"])
                     print("Clicked craft button")
                     time.sleep(slowdown)
                     if len(self.auto_add_waitlist) > 0:
