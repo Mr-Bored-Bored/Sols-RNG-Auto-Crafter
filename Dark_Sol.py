@@ -1076,7 +1076,7 @@ class Dark_Sol(QMainWindow):
             # Enabled Checkbox 
             enabled_checkbox.setProperty("body", body)
             enabled_checkbox.setProperty("instant craft", instant_craft_checkbox)
-            enabled_checkbox.setProperty("collapse ", collapse_button)
+            enabled_checkbox.setProperty("collapse button", collapse_button)
             enabled_checkbox.toggled.connect(potion_enabled)
 
             self.presets_tab_content_layout.addWidget(potion_section)
@@ -2024,4 +2024,3 @@ if __name__ == "__main__":
     loader = loading_screen()
     loader.show()
     sys.exit(app.exec())
-    
