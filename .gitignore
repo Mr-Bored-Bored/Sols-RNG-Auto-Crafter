@@ -2,7 +2,7 @@
 # Ignore everything by default; explicitly allow only the main script (and this .gitignore).
 *
 !.gitignore
-!Dark Sol.py
+!Dark_Sol.py
 
 !Appdata/
 !Appdata/Lib/
