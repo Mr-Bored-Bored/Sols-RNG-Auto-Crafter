@@ -14,6 +14,24 @@
 10. Clean up auto calibrate function
 11. Remove excess delays / slowdowns (ensure reliability)
 12. make overlay click through
+13. Add failsafe if auto add is deactivated after macro is paused
+14. When checking for open recipe button check in jewelry potion
+15. For multi template template settings only have the previous ones
+16. Fix overlay checking (amount / add 5th overlays)
+17. Change auto calibrate function to use seacrh for potion function
+18. Fix scroll calibration status bar appearing at the wrong time
+19. Have scroll calibration show calibration amounts if successful
+20. Add scroll calibration template adjustment settings when using calibrate scrolls button
+21. Pull lib from repo
+22. Make it so that macro cant start until calibrations are complete
+23. Make it so that you can close auto calibrate and then resume where you left off
+24. Make skip loading skip creating the loading screen at all
+25. Make all msg boxes use the same function if possible
+26. Make create external msg box function also able to create internal msg boxes
+27. Change everything from calibration name to position name (calibration name is confusing since it applies to both calibrations and templates)
+28. Create manual calibration function for checkmarks 
+29. Create manual calibration function for scroll amounts using a counter and having them check also doing -1 so have them do 1 extra if they are sure but it is prefer to do auto though
+30. make scroll calibration button have the ability to change settings
 
 - Mini Status Label
 13. Make Mini Status Label movable (when moving make it show largest size)
@@ -53,7 +71,9 @@
 --reset_config: Resets config to default settings
 
 # Completed (To write commit messages):
-Removed Excess Imports
+Fixed scroll calibration not finishing if settings were adjusted
+Fixed Scroll Calibration button not focusing roblox
+Added Manual Calibration mode for everything except checkmarks and scrolling
 """
 
 # Dev Tools
@@ -63,11 +83,17 @@ create_debug_test_buttons = True
 # DPI Setup
 import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+user32 = ctypes.windll.user32
+gdi32 = ctypes.windll.gdi32
+hdc = user32.GetDC(0)
+LOGPIXELSX = 88
+dpi = gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
+scale = dpi / 96.0
 # Imports
 import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QSlider
-from PyQt6.QtGui import QIcon, QGuiApplication
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QSlider, QRubberBand
+from PyQt6.QtGui import QIcon, QGuiApplication, QColor, QPainter
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint, QEventLoop
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PIL import Image, ImageGrab
 from mousekey import MouseKey
@@ -137,98 +163,109 @@ def nice_config_save(ind=4):
             f.write(text)
 
 hidden_config = {
-                "data": {
-                    "scroll amounts": {"to_5": 17, "past_5": 51},
-                    "calibration data": {
-                        "add button 1": {"confidence": 0.75},
-                        "add button 2": {"confidence": 0.75},
-                        "add button 3": {"confidence": 0.75},
-                        "add button 4": {"confidence": 0.75},
-                        "add button 5": {"confidence": 0.75, "scroll check confidence": 0.75},
-                        "amount box 1": {"confidence": 0.75},
-                        "amount box 2": {"confidence": 0.75},
-                        "amount box 3": {"confidence": 0.75},
-                        "amount box 4": {"confidence": 0.75},
-                        "amount box 5": {"confidence": 0.75},
-                        "auto add button": {"confidence": 0.75},
-                        "craft button": {"confidence": 0.75},
-                        "potion search bar": {"confidence": 0.75},
-                        "potion selection button": {"confidence": 0.75},
-                        "open recipe button": {"confidence": 0.75}
-                    }
-                },
-                "positions": {
-                    "add button 1": {"bbox": [1080, 460, 1185, 487], "center": [1132, 473]},
-                    "add button 2": {"bbox": [1081, 514, 1186, 541], "center": [1133, 527]},
-                    "add button 3": {"bbox": [1081, 568, 1186, 595], "center": [1133, 581]},
-                    "add button 4": {"bbox": [1081, 622, 1186, 649], "center": [1133, 635]},
-                    "add button 5": {"bbox": [1081, 659, 1186, 686], "center": [1133, 672]},
-                    "amount box 1": {"bbox": [968, 458, 1075, 488], "center": [1021, 473]},
-                    "amount box 2": {"bbox": [969, 512, 1076, 542], "center": [1022, 527]},
-                    "amount box 3": {"bbox": [969, 566, 1076, 596], "center": [1022, 581]},
-                    "amount box 4": {"bbox": [969, 620, 1076, 650], "center": [1022, 635]},
-                    "amount box 5": {"bbox": [969, 657, 1076, 687], "center": [1022, 672]},
-                    "potion selection button": {"bbox": [1407, 337, 1855, 467], "center": [1631, 402]},
-                    "auto add button": {"bbox": [371, 848, 508, 893], "center": [439, 870]},
-                    "craft button": {"bbox": [960, 716, 1208, 749], "center": [1084, 732]},
-                    "potion search bar": {"bbox": [1405, 293, 1857, 325], "center": [1631, 309]},
-                    "open recipe button": {"bbox": [68, 842, 366, 897], "center": [217, 869]}
-                },
-                "current_preset": "Main",
-                "item presets": {
-                    "Main": {
-                        "bound": {
-                            "buttons to check": ["add button 1"],
-                            "additional buttons to click": ["add button 4"],
-                            "crafting slots": 4,
-                            "instant craft": False,
-                            "enabled": False,
-                            "collapsed": False
-                        },
-                        "heavenly": {
-                            "buttons to check": ["add button 2", "add button 3"],
-                            "additional buttons to click": ["add button 1"],
-                            "crafting slots": 5,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "zeus": {
-                            "buttons to check": ["add button 3"],
-                            "additional buttons to click": ["add button 1", "add button 2"],
-                            "crafting slots": 5,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "poseidon": {
-                            "buttons to check": ["add button 2"],
-                            "additional buttons to click": ["add button 1"],
-                            "crafting slots": 4,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "hades": {
-                            "buttons to check": ["add button 2"],
-                            "additional buttons to click": ["add button 1"],
-                            "crafting slots": 4,
-                            "instant craft": False,
-                            "enabled": True,
-                            "collapsed": True
-                        },
-                        "warp": {
-                            "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
-                            "additional buttons to click": ["add button 1", "add button 2"],
-                            "crafting slots": 6,
-                            "instant craft": False,
-                            "enabled": False,
-                            "collapsed": False
-                        }
-                    }
-                }
+    "data": {
+        "scroll amounts": {"to_5": 17, "past_5": 51},
+        "calibration data": {
+            "add button 1": {"confidence": 0.75},
+            "add button 2": {"confidence": 0.75},
+            "add button 3": {"confidence": 0.75},
+            "add button 4": {"confidence": 0.75},
+            "add button 5": {"confidence": 0.75, "scroll check confidence": 0.75},
+            "amount box 1": {"confidence": 0.75},
+            "amount box 2": {"confidence": 0.75},
+            "amount box 3": {"confidence": 0.75},
+            "amount box 4": {"confidence": 0.75},
+            "amount box 5": {"confidence": 0.75},
+            "auto add button": {"confidence": 0.75},
+            "craft button": {"confidence": 0.75},
+            "potion search bar": {"confidence": 0.75},
+            "open recipe button": {"confidence": 0.75},
+            "potion menu item button": {"confidence": 0.75},
+            "potion selection button 1": {"confidence": 0.75},
+            "potion selection button 2": {"confidence": 0.9},
+            "potion selection button 3": {"confidence": 0.9},
+            "add completed checkmark 1": {"confidence": 0.8}
+        }
+    },
+    "positions": {
+        "add button 1": {"bbox": [1080, 460, 1185, 487], "center": [1132, 473]},
+        "add button 2": {"bbox": [1081, 514, 1186, 541], "center": [1133, 527]},
+        "add button 3": {"bbox": [1081, 568, 1186, 595], "center": [1133, 581]},
+        "add button 4": {"bbox": [1081, 622, 1186, 649], "center": [1133, 635]},
+        "add button 5": {"bbox": [1081, 659, 1186, 686], "center": [1133, 672]},
+        "amount box 1": {"bbox": [969, 458, 1076, 488], "center": [1022, 473]},
+        "amount box 2": {"bbox": [969, 512, 1076, 542], "center": [1022, 527]},
+        "amount box 3": {"bbox": [969, 566, 1076, 596], "center": [1022, 581]},
+        "amount box 4": {"bbox": [969, 620, 1076, 650], "center": [1022, 635]},
+        "amount box 5": {"bbox": [969, 657, 1076, 687], "center": [1022, 672]},
+        "potion menu item button": {"bbox": [1393, 250, 1630, 285], "center": [1511, 267]},
+        "potion selection button 1": {"bbox": [1407, 337, 1857, 465], "center": [1632, 401]},
+        "potion selection button 2": {"bbox": [1408, 473, 1855, 600], "center": [1631, 536]},
+        "potion selection button 3": {"bbox": [1407, 605, 1855, 735], "center": [1631, 670]},
+        "auto add button": {"bbox": [371, 848, 508, 893], "center": [439, 870]},
+        "craft button": {"bbox": [959, 716, 1207, 749], "center": [1083, 732]},
+        "potion search bar": {"bbox": [1405, 293, 1857, 325], "center": [1631, 309]},
+        "open recipe button": {"bbox": [68, 842, 366, 897], "center": [217, 869]},
+        "add completed checkmark 1": {"bbox": [942, 458, 978, 488], "center": [960, 480]},
+        "add completed checkmark 2": {"bbox": [942, 512, 978, 542], "center": [960, 480]},
+        "add completed checkmark 3": {"bbox": [942, 566, 978, 596], "center": [960, 480]},
+        "add completed checkmark 4": {"bbox": [942, 620, 978, 650], "center": [960, 480]},
+        "add completed checkmark 5": {"bbox": [942, 657, 978, 687], "center": [960, 480]}
+    },
+    "current_preset": "Main",
+    "item presets": {
+        "Main": {
+            "bound": {
+                "buttons to check": ["add button 1"],
+                "additional buttons to click": ["add button 4"],
+                "crafting slots": 4,
+                "instant craft": True,
+                "enabled": False,
+                "collapsed": False
+            },
+            "heavenly": {
+                "buttons to check": ["add button 2", "add button 3"],
+                "additional buttons to click": ["add button 1"],
+                "crafting slots": 5,
+                "instant craft": False,
+                "enabled": True,
+                "collapsed": False
+            },
+            "zeus": {
+                "buttons to check": ["add button 3"],
+                "additional buttons to click": ["add button 1", "add button 2"],
+                "crafting slots": 5,
+                "instant craft": False,
+                "enabled": True,
+                "collapsed": True
+            },
+            "poseidon": {
+                "buttons to check": ["add button 2"],
+                "additional buttons to click": ["add button 1"],
+                "crafting slots": 4,
+                "instant craft": False,
+                "enabled": True,
+                "collapsed": True
+            },
+            "hades": {
+                "buttons to check": ["add button 2"],
+                "additional buttons to click": ["add button 1"],
+                "crafting slots": 4,
+                "instant craft": False,
+                "enabled": True,
+                "collapsed": True
+            },
+            "warp": {
+                "buttons to check": ["add button 1", "add button 2", "add button 4", "add button 5", "add button 6"],
+                "additional buttons to click": ["add button 1", "add button 2"],
+                "crafting slots": 6,
+                "instant craft": False,
+                "enabled": False,
+                "collapsed": False
             }
-
+        }
+    }
+}
 if CONFIG_PATH.exists() and not use_built_in_config:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -414,7 +451,7 @@ class loading_thread(QThread):
 class loading_screen(QWidget):
     def __init__(self):
         super().__init__()
-        parts_to_load = 3
+        parts_to_load = 1
         self.loading_bar = QProgressBar(self)
         self.setWindowTitle("Loading Dark Sol")
         self.setStyleSheet(""" QProgressBar {background-color: black; color: white; border-radius: 5px; border: 1px solid black; font-size: 15pt; height: 40px;} QProgressBar::chunk {background-color: lime; }""")
@@ -498,6 +535,7 @@ class Dark_Sol(QMainWindow):
         self.set_add_button_2_coordinates = QPushButton("Set Add Button 2 Coordinates")
         self.set_add_button_3_coordinates = QPushButton("Set Add Button 3 Coordinates")
         self.set_add_button_4_coordinates = QPushButton("Set Add Button 4 Coordinates")
+        self.set_add_button_5_coordinates = QPushButton("Set Add Button 5 Coordinates")
         self.amount_box_coordinates_selector = QWidget()
         self.amount_box_coordinates_selector.setWindowTitle("Set Amount Box Coordinates")
         self.amount_box_coordinates_selector_layout = QVBoxLayout(self.amount_box_coordinates_selector)
@@ -506,6 +544,7 @@ class Dark_Sol(QMainWindow):
         self.set_amount_box_2_coordinates = QPushButton("Set Amount Box 2 Coordinates")
         self.set_amount_box_3_coordinates = QPushButton("Set Amount Box 3 Coordinates")
         self.set_amount_box_4_coordinates = QPushButton("Set Amount Box 4 Coordinates")
+        self.set_amount_box_5_coordinates = QPushButton("Set Amount Box 5 Coordinates")
         self.set_auto_add_button_coordinates = QPushButton("Set Auto Add Button Coordinates")
         self.set_amount_box_coordinates = QPushButton("Set Amount Box Coordinates")
         self.set_craft_button_coordinates = QPushButton("Set Craft Button Coordinates")
@@ -624,6 +663,7 @@ class Dark_Sol(QMainWindow):
         semi_auto_layout = QVBoxLayout(semi_auto_calibration_page)
         semi_auto_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         semi_auto_layout.addWidget(self.set_add_button_template)
+        semi_auto_layout.addWidget(self.set_amount_box_template)
         # Manual Calibration Page
         manual_calibration_page = QWidget()
         manual_layout = QVBoxLayout(manual_calibration_page)
@@ -632,10 +672,12 @@ class Dark_Sol(QMainWindow):
         self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_2_coordinates)
         self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_3_coordinates)
         self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_4_coordinates)
+        self.add_button_coordinates_selector_layout.addWidget(self.set_add_button_5_coordinates)
         self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_1_coordinates)
         self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_2_coordinates)
         self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_3_coordinates)
         self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_4_coordinates)
+        self.amount_box_coordinates_selector_layout.addWidget(self.set_amount_box_5_coordinates)
         manual_layout.addWidget(self.set_add_button_coordinates)
         manual_layout.addWidget(self.set_amount_box_coordinates)
         manual_layout.addWidget(self.set_auto_add_button_coordinates)
@@ -658,6 +700,7 @@ class Dark_Sol(QMainWindow):
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
         self.show_calibration_overlays_button.clicked.connect(self.show_calibration_overlays)
+
         self.auto_calibrate_button.clicked.connect(self.auto_calibrate)
         self.find_add_button.clicked.connect(lambda: self.find_add_buttons())
         self.find_amount_box.clicked.connect(lambda: self.find_amount_boxes())
@@ -665,9 +708,27 @@ class Dark_Sol(QMainWindow):
         self.find_craft_button.clicked.connect(lambda: (self.focus_roblox(), time.sleep(0.2), self.safe_image_find("craft button")))
         self.find_search_bar.clicked.connect(lambda: (self.focus_roblox(), time.sleep(0.2), self.safe_image_find("potion search bar")))
         self.calibrate_add_completed_checkmarks_button.clicked.connect(self.find_and_calibrate_checkmarks)
-        self.find_potion_selection_button.clicked.connect(lambda: self.find_potion_selection_buttons())
+        self.find_potion_selection_button.clicked.connect(lambda: self.find_potion_selection_buttons())    
+
+        self.set_add_button_coordinates.clicked.connect(lambda: self.add_button_coordinates_selector.show())
+        self.set_add_button_1_coordinates.clicked.connect(lambda: self.manual_calibration("add button 1"))
+        self.set_add_button_2_coordinates.clicked.connect(lambda: self.manual_calibration("add button 2"))
+        self.set_add_button_3_coordinates.clicked.connect(lambda: self.manual_calibration("add button 3"))
+        self.set_add_button_4_coordinates.clicked.connect(lambda: self.manual_calibration("add button 4"))
+        self.set_add_button_5_coordinates.clicked.connect(lambda: self.manual_calibration("add button 5"))
+        self.set_amount_box_coordinates.clicked.connect(lambda: self.amount_box_coordinates_selector.show())
+        self.set_amount_box_1_coordinates.clicked.connect(lambda: self.manual_calibration("amount box 1"))
+        self.set_amount_box_2_coordinates.clicked.connect(lambda: self.manual_calibration("amount box 2"))
+        self.set_amount_box_3_coordinates.clicked.connect(lambda: self.manual_calibration("amount box 3"))
+        self.set_amount_box_4_coordinates.clicked.connect(lambda: self.manual_calibration("amount box 4"))
+        self.set_amount_box_5_coordinates.clicked.connect(lambda: self.manual_calibration("amount box 5"))
+        self.set_auto_add_button_coordinates.clicked.connect(lambda: self.manual_calibration("auto add button"))
+        self.set_craft_button_coordinates.clicked.connect(lambda: self.manual_calibration("craft button"))
+        self.set_search_bar_coordinates.clicked.connect(lambda: self.manual_calibration("potion search bar"))
+        self.set_potion_selection_button_coordinates.clicked.connect(lambda: self.manual_calibration("potion selection button"))
     
         self.calibrate_scrolls_button.clicked.connect(self.calibrate_scrolling)
+
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
         self.delete_preset_button.clicked.connect(self.delete_preset)
@@ -707,6 +768,103 @@ class Dark_Sol(QMainWindow):
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
  
+    def manual_calibration(self, calibration_name):
+        def select_region():
+            loop = QEventLoop()
+            selection_result = None
+
+            widget = QWidget()
+            widget.setWindowFlags(
+                Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.WindowStaysOnTopHint
+                | Qt.WindowType.Tool
+            )
+            widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            widget.setMouseTracking(True)
+            widget.setCursor(Qt.CursorShape.CrossCursor)
+
+            selection_band = QRubberBand(QRubberBand.Shape.Rectangle, widget)
+            drag_start = QPoint()
+
+            def refresh_screen_metrics() -> None: 
+                hwnd = int(widget.winId())
+
+            def paint_event(event):  # type: ignore[no-untyped-def]
+                p = QPainter(widget)
+                p.fillRect(widget.rect(), QColor(120, 120, 120, 80))
+                p.end()
+
+            def key_press_event(event):  # type: ignore[no-untyped-def]
+                if event is None:
+                    return
+                if event.key() == Qt.Key.Key_Escape:
+                    loop.quit()
+
+            def mouse_press_event(event):  # type: ignore[no-untyped-def]
+                nonlocal drag_start
+                if event is None:
+                    return
+                if event.button() != Qt.MouseButton.LeftButton:
+                    return
+                drag_start = event.pos()
+                selection_band.setGeometry(QRect(drag_start, drag_start))
+                selection_band.show()
+
+            def mouse_move_event(event):  # type: ignore[no-untyped-def]
+                if event is None:
+                    return
+                if not selection_band.isVisible():
+                    return
+                selection_band.setGeometry(QRect(drag_start, event.pos()).normalized())
+
+            def mouse_release_event(event):  # type: ignore[no-untyped-def]
+                nonlocal selection_result
+                if event is None:
+                    return
+                if event.button() != Qt.MouseButton.LeftButton:
+                    return
+                selection_rect = selection_band.geometry().normalized()
+                selection_band.hide()
+
+                top_left_global = widget.mapToGlobal(selection_rect.topLeft())
+                bottom_right_global = widget.mapToGlobal(
+                    QPoint(selection_rect.right() + 1, selection_rect.bottom() + 1)
+                )
+                tl_x = int(round(top_left_global.x() * scale))
+                tl_y = int(round(top_left_global.y() * scale))
+                br_x = int(round(bottom_right_global.x() * scale))
+                br_y = int(round(bottom_right_global.y() * scale))
+                selection_result = ((tl_x, tl_y), (br_x, br_y))
+                loop.quit()
+
+            widget.paintEvent = paint_event  # type: ignore[method-assign]
+            widget.keyPressEvent = key_press_event  # type: ignore[method-assign]
+            widget.mousePressEvent = mouse_press_event  # type: ignore[method-assign]
+            widget.mouseMoveEvent = mouse_move_event  # type: ignore[method-assign]
+            widget.mouseReleaseEvent = mouse_release_event  # type: ignore[method-assign]
+
+    
+            widget.showFullScreen()
+            QTimer.singleShot(0, refresh_screen_metrics)
+            loop.exec()
+            selection_band.hide()
+            widget.close()
+            return selection_result
+
+        self.focus_roblox()
+        time.sleep(0.2)
+        result = select_region()
+        if result == None:
+            print(f"Manual calibration for {calibration_name} was cancelled.")
+        else:
+            bbox = (result[0][0], result[0][1], result[1][0], result[1][1])
+            center = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
+            config["positions"][calibration_name] = {"bbox": bbox, "center": center}
+            nice_config_save()
+            print(f"Manual calibration for {calibration_name} completed successfully.")
+
+        
+
     def create_new_preset(self):
         dlg = QDialog(self)
         layout = QVBoxLayout(dlg)
@@ -1179,7 +1337,7 @@ class Dark_Sol(QMainWindow):
                      """)
         
         check_for_button = QPushButton()
-
+        check_for_button.clicked.connect(check_if_template_found)
         adjust_template_widget_layout = QVBoxLayout(adjust_template_widget)
 
         if not multi_settings: #make this check multiple variable instead
@@ -1224,10 +1382,8 @@ class Dark_Sol(QMainWindow):
 
         if not scroll_check:
             check_for_button.setText("Check For Template")
-            check_for_button.clicked.connect(lambda: check_if_template_found())
         else:
             check_for_button.setText("Calibrate Scrolling")
-            check_for_button.clicked.connect(lambda: self.calibrate_scrolling())
 
         adjust_template_widget_layout.addWidget(check_for_button)
 
@@ -1267,8 +1423,6 @@ class Dark_Sol(QMainWindow):
             if not self.safe_image_find("potion selection button " + str(count + 1)):
                 return
         self.move_and_click(config["positions"]["potion selection button 1"]["center"])
-        if not self.safe_image_find("open recipe button"):
-            return
         self.move_and_click(config["positions"]["potion search bar"]["center"]) # switch to self.search_for_potion() later
         mkey.left_click()
         mkey.left_click()
@@ -1277,6 +1431,8 @@ class Dark_Sol(QMainWindow):
         keyboard.Controller().press(keyboard.Key.enter)
         time.sleep(0.1)
         self.move_and_click(config["positions"]["potion selection button 1"]["center"])
+        if not self.safe_image_find("open recipe button"):
+            return
         self.move_and_click(config["positions"]["open recipe button"]["center"])
         if not self.safe_image_find("amount box 1"):
             return
@@ -1304,13 +1460,11 @@ class Dark_Sol(QMainWindow):
         if not self.calibrate_scrolling():
             if not self.adjust_template_settings("add button 5", scroll_check=True):
                 return
-        self.show_calibration_overlays()
-        self.create_external_msg_box("Auto Calibration Complete", "Auto calibration is complete. Please verify the positions are correct.")
-        self.show_calibration_overlays()
-        self.move_and_click(config["positions"]["add button 1"]["center"])
+        
+        self.move_and_click(config["positions"]["amount box 1"]["center"], False)
         pyautogui.scroll(2000)
-        self.move_and_click(config["positions"]["amount box 1"]["center"])
         mkey.left_click()
+        mkey.left_click
         keyboard.Controller().type("20")
         self.move_and_click(config["positions"]["add button 1"]["center"])
         time.sleep(0.1)
@@ -1324,10 +1478,15 @@ class Dark_Sol(QMainWindow):
             amount_box_bbox = config["positions"][f"amount box {count}"]["bbox"]
             config["positions"][f"add completed checkmark {count}"]["bbox"] = (checkmark_width_1, amount_box_bbox[1], checkmark_width_2, amount_box_bbox[3])
         nice_config_save()
-        for count in range(5):
-            self.create_overlay(bbox=config["positions"][f"add completed checkmark {count + 1}"]["bbox"])
+        self.move_and_click(config["positions"]["search bar"]["center"], True)
+        mkey.left_click()
+        mkey.left_click()
+        keyboard.Controller().type("godly")
+        time.sleep(0.5)
+        keyboard.Controller().press(keyboard.Key.enter)
+        self.show_calibration_overlays()
         self.create_external_msg_box("Auto Calibration Complete", "Auto calibration is complete. Please verify the positions are correct.")
-        self.create_overlay(disabled=True)
+        self.show_calibration_overlays()
 
     def find_add_buttons(self):
         self.focus_roblox()
@@ -1466,18 +1625,11 @@ class Dark_Sol(QMainWindow):
         w = x2 - x
         h = y2 - y
 
-        user32 = ctypes.windll.user32
-        gdi32 = ctypes.windll.gdi32
-        hdc = user32.GetDC(0)
-        LOGPIXELSX = 88
-        dpi = gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
-        scaling = dpi / 96.0
-
         # Scale coordinates for logical/physical match
-        x_scaled = int(x / scaling)
-        y_scaled = int(y / scaling)
-        w_scaled = int(w / scaling)
-        h_scaled = int(h / scaling)
+        x_scaled = int(x / scale)
+        y_scaled = int(y / scale)
+        w_scaled = int(w / scale)
+        h_scaled = int(h / scale)
 
         screen = QGuiApplication.screenAt(QPoint(x_scaled + w_scaled // 2, y_scaled + h_scaled // 2))
         if screen is None:
@@ -1597,7 +1749,7 @@ class Dark_Sol(QMainWindow):
                     config["positions"][position_name] = {"bbox": bbox, "center": center}
                     nice_config_save()
                 else:
-                    config["positions"][position_name] = center
+                    config["positions"][position_name] = {"center": center}
                     nice_config_save()
                 return True
                     
@@ -1727,6 +1879,7 @@ class Dark_Sol(QMainWindow):
                         return True
                     pyautogui.scroll(-1)
 
+        self.focus_roblox()
         self.mini_status_widget.show()
         self.update_status("Calibrating scrolling")
         self.move_and_click(config["positions"]["amount box 5"]["center"], False)
