@@ -34,46 +34,43 @@
 30. make scroll calibration button have the ability to change settings
 
 - Mini Status Label
-13. Make Mini Status Label movable (when moving make it show largest size)
+31. Make Mini Status Label movable (when moving make it show largest size)
 
 # Might be added for First Release:
-14. Add multi template for single calibration
-15. Advanced auto updater (with progress bar)
-16. Add settings tab functionality
-17. Add tooltips to all buttons
-18. Add function to check multiple coordinates and seach each one below (mainly for godly's)
+32. Add multi template for single calibration
+33. Advanced auto updater (with progress bar)
+34. Add settings tab functionality
+35. Add tooltips to all buttons
+36. Add function to check multiple coordinates and seach each one below (mainly for godly's)
 
 # Planned for the future:
-19. Add main and auto updater reinstall arguements
-20. Fix multi monitor awareness
-21. Fix other widgets not closing properly
-22. Add actual logger
-23. Make plugins system
-24. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
-25. Able to handle corrupt config
-26. Add config backups
-27. Add importing / exporting presets
-28. Add importing / exporting themes
-29. Add ability to change hotkeys
-30. Add Logging System
-31. Make it so that it can add in 1's instead of just the amount numbers
-32. Complete auto find template function
-33. Add custom log messages (ability for certain logs to not show)
-34. Add complete calibration (paths needed)
-35. Add private server reconnects (paths needed)
-36. Make macro full screen compatible (only needs template rescaling adjustment(i think))
-37. Add complete overlay check for auto calibrate
+37. Add main and auto updater reinstall arguements
+38. Fix multi monitor awareness
+39. Fix other widgets not closing properly
+40. Add actual logger
+41. Make plugins system
+42. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
+43. Able to handle corrupt config
+44. Add config backups
+45. Add importing / exporting presets
+46. Add importing / exporting themes
+47. Add ability to change hotkeys
+48. Add Logging System
+49. Make it so that it can add in 1's instead of just the amount numbers
+50. Complete auto find template function
+51. Add custom log messages (ability for certain logs to not show)
+52. Add complete calibration (paths needed)
+53. Add private server reconnects (paths needed)
+54. Make macro full screen compatible (only needs template rescaling adjustment(i think))
+55. Add complete overlay check for auto calibrate
 - Mini Status Label
-38. Make mini status label show auto add waitlist and add setting for it 
+56. Make mini status label show auto add waitlist and add setting for it 
 
 --- IGNORE ---
 # Start Arguments
 --reset_config: Resets config to default settings
 
 # Completed (To write commit messages):
-Fixed scroll calibration not finishing if settings were adjusted
-Fixed Scroll Calibration button not focusing roblox
-Added Manual Calibration mode for everything except checkmarks and scrolling
 """
 
 # Dev Tools
