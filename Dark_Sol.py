@@ -4,67 +4,66 @@
 # Necessary for First Release:
 1. Implement Semi-Auto and Manual Calibration modes
 2. Add auto updater
-3. Make all hardcoded resolutions dynamic (aka figure out how scaling works)(just praying current code scales atp)
-4. Improve gui
-5. Add debug log
-6. Use math to calculate add completed checkmark positions instead of image finds as it would take too long (but add image find version as well for people who are willing to wait)
-7. Use auto add color check to detect if the current add is completed instead of image find (for reliability due to stable pixel color of the checkmark)
-8. fix checkmarks showing when doing all calibrations show 
-9. Add bbox only to auto image find function
-10. Clean up auto calibrate function
-11. Remove excess delays / slowdowns (ensure reliability)
-12. make overlay click through
-13. Add failsafe if auto add is deactivated after macro is paused
-14. When checking for open recipe button check in jewelry potion
-15. For multi template template settings only have the previous ones
-16. Fix overlay checking (amount / add 5th overlays)
-17. Change auto calibrate function to use seacrh for potion function
-18. Fix scroll calibration status bar appearing at the wrong time
-19. Have scroll calibration show calibration amounts if successful
-20. Add scroll calibration template adjustment settings when using calibrate scrolls button
-21. Pull lib from repo
-22. Make it so that macro cant start until calibrations are complete
-23. Make it so that you can close auto calibrate and then resume where you left off
-24. Make skip loading skip creating the loading screen at all
-25. Make all msg boxes use the same function if possible
-26. Make create external msg box function also able to create internal msg boxes
-27. Change everything from calibration name to position name (calibration name is confusing since it applies to both calibrations and templates)
-28. Create manual calibration function for checkmarks 
-29. Create manual calibration function for scroll amounts using a counter and having them check also doing -1 so have them do 1 extra if they are sure but it is prefer to do auto though
-30. make scroll calibration button have the ability to change settings
-
+3. Improve calibration gui / fix it to support new systems
+4. Add debug log
+5. When checking for open recipe button check in jewelry potion
+6. For multi template template settings only have the previous ones
+7. Fix scroll calibration status bar appearing at the wrong time
+8. Have scroll calibration show calibration amounts if successful
+9. Add scroll calibration template adjustment settings when using calibrate scrolls button
+10. Pull lib from repo
+11. Make it so that macro cant start until calibrations are complete
+12. Make it so that you can close auto calibrate and then resume where you left off
+13. Make skip loading debug skip creating the loading screen at all
+14. Make all msg boxes use the same function if possible
+15. Make create external msg box function also able to create internal msg boxes
+16. Change everything from calibration name to position name (calibration name is confusing since it applies to both calibrations and templates)
+17. Create manual calibration function for scroll amounts using a counter prefer auto though
+18. make adjust template use multiple variable instead of excess multi settings variable
+19. Add verifications before runnning certain calibrations
+20. Make scroll calibration slightly automatic using pixel detection for new item detection
 - Mini Status Label
-31. Make Mini Status Label movable (when moving make it show largest size)
+21. Make Mini Status Label movable (when moving make it show largest size)
+22. make mini status label wrapable
+23. Add private server rejoin for calibrations toggle in settings tab
+- Final Checks
+24. Remove excess delays / slowdowns (ensure reliability)
+25. Check print statements and remove unnecessary ones
+26. Verify macro can handle everything after entering potion craft gui
 
 # Might be added for First Release:
-32. Add multi template for single calibration
-33. Advanced auto updater (with progress bar)
-34. Add settings tab functionality
-35. Add tooltips to all buttons
-36. Add function to check multiple coordinates and seach each one below (mainly for godly's)
+1. Add multi template for single calibration
+2. Advanced auto updater (with progress bar)
+3. Add settings tab functionality
+4. Add tooltips to all buttons
+5. Add function to check multiple coordinates and seach each one below (mainly for godly's)
+6. Ability to slow down macro if it is going too fast and missing things (mainly for lower end pcs)
+7. Always on top setting
+8. Make calibration checks not need manual scrolling to verify calibrations
+9. Add the ability to reset templates to default by pulling from the repo
 
 # Planned for the future:
-37. Add main and auto updater reinstall arguements
-38. Fix multi monitor awareness
-39. Fix other widgets not closing properly
-40. Add actual logger
-41. Make plugins system
-42. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
-43. Able to handle corrupt config
-44. Add config backups
-45. Add importing / exporting presets
-46. Add importing / exporting themes
-47. Add ability to change hotkeys
-48. Add Logging System
-49. Make it so that it can add in 1's instead of just the amount numbers
-50. Complete auto find template function
-51. Add custom log messages (ability for certain logs to not show)
-52. Add complete calibration (paths needed)
-53. Add private server reconnects (paths needed)
-54. Make macro full screen compatible (only needs template rescaling adjustment(i think))
-55. Add complete overlay check for auto calibrate
+1. Make all hardcoded resolutions dynamic (aka figure out how scaling works)(just praying current code scales atp)
+2. Add main and auto updater reinstall arguements
+3. Fix multi monitor awareness
+4. Fix other widgets not closing properly
+5. Add actual logger
+6. Make plugins system
+7. Add theme tab functionality (Requires style sheet overhaul and compression to allow for user friendly adjustments)
+8. Able to handle corrupt config
+9. Add config backups
+10. Add importing / exporting presets
+11. Add importing / exporting themes
+12. Add ability to change hotkeys
+13. Add Logging System
+14. Make it so that it can add in 1's instead of just the amount numbers
+15. Complete auto find template function
+16. Add custom log messages (ability for certain logs to not show)
+17. Add complete calibration (paths needed)
+18. Add private server reconnects (paths needed)
+19. Make macro full screen compatible (only needs template rescaling adjustment(i think))
 - Mini Status Label
-56. Make mini status label show auto add waitlist and add setting for it 
+20. Make mini status label show auto add waitlist and add setting for it 
 
 --- IGNORE ---
 # Start Arguments
@@ -82,10 +81,14 @@ import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
+
 hdc = user32.GetDC(0)
 LOGPIXELSX = 88
 dpi = gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
 scale = dpi / 96.0
+
+screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+
 # Imports
 import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog, QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QSlider, QRubberBand
@@ -94,7 +97,7 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint, 
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PIL import Image, ImageGrab
 from mousekey import MouseKey
-from pynput import keyboard
+from pynput import keyboard, mouse
 import numpy as np
 from copy import deepcopy
 # Setup Imports
@@ -506,6 +509,7 @@ class Dark_Sol(QMainWindow):
         self.down_chevron_svg = str(local_appdata_directory / "Lib" / "Icons" / "down chevron.svg")
         self.up_chevron_disabled_svg = str(local_appdata_directory / "Lib" / "Icons" / "up chevron disabled.svg")
         # Create Calibration Tab Elements
+        self.calibrated_positions = []
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
         self.show_calibration_overlays_button = QPushButton("Show Calibration Overlays")
@@ -518,8 +522,8 @@ class Dark_Sol(QMainWindow):
         self.find_craft_button = QPushButton("Find Craft Button")
         self.find_search_bar = QPushButton("Find Search Bar")
         self.find_potion_selection_button = QPushButton("Find Potion Selection Button")
-        self.calibrate_add_completed_checkmarks_button = QPushButton("Calibrate Add Completed Checkmarks")
-        self.calibrate_scrolls_button = QPushButton("Calibrate Scroll Amounts")
+        self.auto_calibrate_add_completed_checkmarks_button = QPushButton("Auto Calibrate Add Completed Checkmarks")
+        self.auto_calibrate_scrolling_button = QPushButton("Auto Calibrate Scroll Amounts")
         # Semi Auto Calibration Mode
         self.set_add_button_template = QPushButton("Set Add Button Template")
         self.set_amount_box_template = QPushButton("Set Amount Box Template")
@@ -547,6 +551,8 @@ class Dark_Sol(QMainWindow):
         self.set_craft_button_coordinates = QPushButton("Set Craft Button Coordinates")
         self.set_search_bar_coordinates = QPushButton("Set Search Bar Coordinates")
         self.set_potion_selection_button_coordinates = QPushButton("Set Potion Selection Button Coordinates")
+        self.calibrate_add_completed_checkmarks_button = QPushButton("Calibrate Add Completed Checkmarks")
+        self.manually_calibrate_scrolling_button = QPushButton("Calibrate Scroll Amounts")
         # Mini Status Label 
         self.mini_status_widget = QWidget()
         self.general_mini_status_label = QLabel("Stopped")
@@ -652,9 +658,8 @@ class Dark_Sol(QMainWindow):
         auto_layout.addWidget(self.find_craft_button)
         auto_layout.addWidget(self.find_search_bar)
         auto_layout.addWidget(self.find_potion_selection_button)
-        auto_layout.addWidget(self.calibrate_add_completed_checkmarks_button)
-        auto_layout.addWidget(self.calibrate_scrolls_button)
-        self.calibrate_scrolls_button.setToolTip("You must be in the crafting menu for this to work")
+        auto_layout.addWidget(self.auto_calibrate_add_completed_checkmarks_button)
+        auto_layout.addWidget(self.auto_calibrate_scrolling_button)
         # Semi Auto Calibration Page
         semi_auto_calibration_page = QWidget()
         semi_auto_layout = QVBoxLayout(semi_auto_calibration_page)
@@ -681,6 +686,8 @@ class Dark_Sol(QMainWindow):
         manual_layout.addWidget(self.set_craft_button_coordinates)
         manual_layout.addWidget(self.set_search_bar_coordinates)
         manual_layout.addWidget(self.set_potion_selection_button_coordinates)
+        manual_layout.addWidget(self.calibrate_add_completed_checkmarks_button)
+        manual_layout.addWidget(self.manually_calibrate_scrolling_button)
         self.add_button_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 22pt;}")
         self.amount_box_coordinates_selector.setStyleSheet("QWidget {background-color: black;} QPushButton {color: cyan;border: 2px solid cyan; border-radius: 6px; font-size: 22pt;}")
         self.add_button_coordinates_selector.adjustSize()
@@ -704,8 +711,9 @@ class Dark_Sol(QMainWindow):
         self.find_auto_add_button.clicked.connect(lambda: (self.focus_roblox(), time.sleep(0.2), self.safe_image_find("auto add button")))
         self.find_craft_button.clicked.connect(lambda: (self.focus_roblox(), time.sleep(0.2), self.safe_image_find("craft button")))
         self.find_search_bar.clicked.connect(lambda: (self.focus_roblox(), time.sleep(0.2), self.safe_image_find("potion search bar")))
-        self.calibrate_add_completed_checkmarks_button.clicked.connect(self.find_and_calibrate_checkmarks)
-        self.find_potion_selection_button.clicked.connect(lambda: self.find_potion_selection_buttons())    
+        self.auto_calibrate_add_completed_checkmarks_button.clicked.connect(self.find_checkmark)
+        self.find_potion_selection_button.clicked.connect(lambda: self.find_potion_selection_buttons())
+        self.auto_calibrate_scrolling_button.clicked.connect(lambda: self.calibrate_scrolling())    
 
         self.set_add_button_coordinates.clicked.connect(lambda: self.add_button_coordinates_selector.show())
         self.set_add_button_1_coordinates.clicked.connect(lambda: self.manual_calibration("add button 1"))
@@ -723,8 +731,9 @@ class Dark_Sol(QMainWindow):
         self.set_craft_button_coordinates.clicked.connect(lambda: self.manual_calibration("craft button"))
         self.set_search_bar_coordinates.clicked.connect(lambda: self.manual_calibration("potion search bar"))
         self.set_potion_selection_button_coordinates.clicked.connect(lambda: self.manual_calibration("potion selection button"))
-    
-        self.calibrate_scrolls_button.clicked.connect(self.calibrate_scrolling)
+        self.calibrate_add_completed_checkmarks_button.clicked.connect(lambda: self.manual_calibration("add completed checkmark"))
+        self.calibrate_add_completed_checkmarks_button.clicked.connect(lambda: self.manual_checkmarks_calibration())
+        self.manually_calibrate_scrolling_button.clicked.connect(lambda: self.manual_scroll_calibration())
 
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
@@ -765,7 +774,7 @@ class Dark_Sol(QMainWindow):
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
  
-    def manual_calibration(self, calibration_name):
+    def manual_calibration(self, calibration_name, save=True):
         def select_region():
             loop = QEventLoop()
             selection_result = None
@@ -840,7 +849,6 @@ class Dark_Sol(QMainWindow):
             widget.mouseMoveEvent = mouse_move_event  # type: ignore[method-assign]
             widget.mouseReleaseEvent = mouse_release_event  # type: ignore[method-assign]
 
-    
             widget.showFullScreen()
             QTimer.singleShot(0, refresh_screen_metrics)
             loop.exec()
@@ -856,11 +864,12 @@ class Dark_Sol(QMainWindow):
         else:
             bbox = (result[0][0], result[0][1], result[1][0], result[1][1])
             center = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
-            config["positions"][calibration_name] = {"bbox": bbox, "center": center}
-            nice_config_save()
             print(f"Manual calibration for {calibration_name} completed successfully.")
-
-        
+            if save:
+                config["positions"][calibration_name] = {"bbox": bbox, "center": center}
+                nice_config_save()
+                print(f"Manual Calibration Coordinates for {calibration_name} saved to config.")
+            return bbox, center
 
     def create_new_preset(self):
         dlg = QDialog(self)
@@ -1420,7 +1429,7 @@ class Dark_Sol(QMainWindow):
             if not self.safe_image_find("potion selection button " + str(count + 1)):
                 return
         self.move_and_click(config["positions"]["potion selection button 1"]["center"])
-        self.move_and_click(config["positions"]["potion search bar"]["center"]) # switch to self.search_for_potion() later
+        self.move_and_click(config["positions"]["potion search bar"]["center"])
         mkey.left_click()
         mkey.left_click()
         keyboard.Controller().type(f"jewelry")
@@ -1469,12 +1478,7 @@ class Dark_Sol(QMainWindow):
         if not self.safe_image_find("add completed checkmark 1"):
             return
         
-        checkmark_width_1 = config["positions"][f"add completed checkmark 1"]["bbox"][0]
-        checkmark_width_2 = config["positions"][f"add completed checkmark 1"]["bbox"][2]
-        for count in range(1, 6):
-            amount_box_bbox = config["positions"][f"amount box {count}"]["bbox"]
-            config["positions"][f"add completed checkmark {count}"]["bbox"] = (checkmark_width_1, amount_box_bbox[1], checkmark_width_2, amount_box_bbox[3])
-        nice_config_save()
+        self.calibrate_checkmarks()
         self.move_and_click(config["positions"]["search bar"]["center"], True)
         mkey.left_click()
         mkey.left_click()
@@ -1522,7 +1526,7 @@ class Dark_Sol(QMainWindow):
             if not self.safe_image_find("potion selection button " + str(count + 1)):
                 return
         
-    def find_and_calibrate_checkmarks(self):
+    def find_checkmark(self):
         self.focus_roblox()
         time.sleep(0.2)
         self.move_and_click(config["positions"]["amount box 1"]["center"], False)
@@ -1531,24 +1535,43 @@ class Dark_Sol(QMainWindow):
         mkey.left_click()
         if not self.safe_image_find("add completed checkmark 1"):
             return
-        
+        self.calibrate_checkmarks()
+
+    def calibrate_checkmarks(self):
         checkmark_width_1 = config["positions"][f"add completed checkmark 1"]["bbox"][0]
         checkmark_width_2 = config["positions"][f"add completed checkmark 1"]["bbox"][2]
-        for count in range(1, 6):
+        checkmark_height_difference_top = config["positions"][f"add completed checkmark 1"]["bbox"][1] - config["positions"][f"amount box 1"]["bbox"][1]
+        checkmark_height_difference_bottom = config["positions"][f"add completed checkmark 1"]["bbox"][3] - config["positions"][f"amount box 1"]["bbox"][3]
+
+        for count in range(2, 6):
             amount_box_bbox = config["positions"][f"amount box {count}"]["bbox"]
-            config["positions"][f"add completed checkmark {count}"]["bbox"] = (checkmark_width_1, amount_box_bbox[1], checkmark_width_2, amount_box_bbox[3])
+            config["positions"][f"add completed checkmark {count}"]["bbox"] = (checkmark_width_1, amount_box_bbox[1] + checkmark_height_difference_top, checkmark_width_2, amount_box_bbox[3] + checkmark_height_difference_bottom)
         nice_config_save()
         for count in range(5):
             self.create_overlay(bbox=config["positions"][f"add completed checkmark {count + 1}"]["bbox"])
         self.create_external_msg_box("Checkmark Calibration Complete", "checkmark calibration is complete. Please verify the positions are correct.")
         self.create_overlay(disabled=True)
-        
+
+    def manual_scroll_calibration(self):
+        def point_clicked(x, y, button, pressed):
+            scroll_calibration_mouse_listener.stop()
+            print(mkey.get_cursor_position())
+
+        self.focus_roblox()
+        scroll_calibration_mouse_listener = mouse.Listener(on_click=point_clicked)
+        scroll_calibration_mouse_listener.start()
+        scroll_calibration_mouse_listener.join()
+
+    def manual_checkmarks_calibration(self):
+        self.manual_calibration("add completed checkmark 1", save=True)
+        self.calibrate_checkmarks()
+
     def focus_roblox(self):
         allowed = {"WINDOWSCLIENT", "ROBLOXPLAYERBETA", "ROBLOXAPP"}
         roblox_hwnd, found_window = None, False
 
         def enum_handler(hwnd, lParam):
-            nonlocal roblox_hwnd
+            nonlocal roblox_hwnd, found_window
             if not win32gui.IsWindowVisible(hwnd):
                 return
 
@@ -1571,7 +1594,6 @@ class Dark_Sol(QMainWindow):
             print("Roblox window not found." if not found_window else "Roblox window found, but has incorrect class.")
             return False
 
-        # Only restore if minimized (avoids breaking fullscreen)
         if win32gui.IsIconic(roblox_hwnd):
             win32gui.ShowWindow(roblox_hwnd, win32con.SW_RESTORE)
         win32gui.SetForegroundWindow(roblox_hwnd)
@@ -1588,9 +1610,9 @@ class Dark_Sol(QMainWindow):
                     self.scroll_calibration_safety_check = True
             elif key == keyboard.Key.f11:
                 os._exit(1)
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
-        listener.join()
+        _main_hotkey_listener = keyboard.Listener(on_press=on_press)
+        _main_hotkey_listener.start()
+        _main_hotkey_listener.join()
 
     def setup_hotkeys(self):
         self.start_macro_signal.connect(self.start_macro)
@@ -1632,18 +1654,17 @@ class Dark_Sol(QMainWindow):
         if screen is None:
             QMessageBox.warning(self, "Screen Not Found", "Could not find a screen at the specified coordinates.")
             return
-        screen_geometry = screen.geometry()
 
         overlay_window = QWidget()
-        overlay_window.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        overlay_window.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.WindowTransparentForInput)
         overlay_window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         overlay_window.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        overlay_window.setGeometry(screen_geometry)
+        overlay_window.setGeometry(0, 0, screen_width, screen_height)
         overlay_window.show()
         overlay_window.raise_()
 
-        local_x = x_scaled - screen_geometry.x()
-        local_y = y_scaled - screen_geometry.y()
+        local_x = x_scaled - screen_width
+        local_y = y_scaled - screen_height
 
         outline_frame = QFrame(overlay_window)
         outline_frame.setGeometry(QRect(local_x, local_y, w_scaled, h_scaled))
@@ -1700,27 +1721,20 @@ class Dark_Sol(QMainWindow):
         return match_count
 
     def rescale_template(self, template, template_path):
-        base_scale = data["template data"][template]["scale"]   
-        base_resolution =data["template data"][template]["resolution"]
-        user32 = ctypes.windll.user32
-        gdi32 = ctypes.windll.gdi32
-        hdc = user32.GetDC(0)
-        scale_dpi = gdi32.GetDeviceCaps(hdc, 88)  # Returns 96, 120, 144, etc.
-        user32.ReleaseDC(0, hdc)
-        px_width, px_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-        current_scale = scale_dpi / 96.0
-        scale_ratio = current_scale / base_scale
-        res_ratio_x = px_width / base_resolution[0]
-        res_ratio_y = px_height / base_resolution[1]
-        total_scale_x = scale_ratio * res_ratio_x
-        total_scale_y = scale_ratio * res_ratio_y
-        print(f"Total Scale X: {total_scale_x}, Total Scale Y: {total_scale_y}")
-        print(f"Screen Resolution: {px_width}x{px_height}, DPI Scale: {current_scale*100:.2f}%")
-        print(f"Base Scale: {base_scale}, Base Resolution: {base_resolution}")
-        print(f"Scale Ratio: {scale_ratio}, Resolution Ratio X: {res_ratio_x}, Resolution Ratio Y: {res_ratio_y}")
+        image_scale = data["template data"][template]["scale"]   
+        image_resolution =data["template data"][template]["resolution"]
+        scale_ratio = scale / image_scale
+        image_ratio_x = screen_width / image_resolution[0]
+        image_ratio_y = screen_height / image_resolution[1]
+        total_image_scale_x = scale_ratio * image_ratio_x
+        total_image_scale_y = scale_ratio * image_ratio_y
+        print(f"Total Scale X: {total_image_scale_x}, Total Scale Y: {total_image_scale_y}")
+        print(f"Screen Resolution: {screen_width}x{screen_height}, DPI Scale: {scale*100:.2f}%")
+        print(f"Image Scale: {image_scale}, Image Resolution: {image_resolution}")
+        print(f"Scale Ratio: {scale_ratio}, Resolution Ratio X: {image_ratio_x}, Resolution Ratio Y: {image_ratio_y}")
 
         template_img = Image.open(template_path)
-        template_scaled = template_img.resize((int(template_img.width * total_scale_x), int(template_img.height * total_scale_y)), Image.Resampling.LANCZOS)
+        template_scaled = template_img.resize((int(template_img.width * total_image_scale_x), int(template_img.height * total_image_scale_y)), Image.Resampling.LANCZOS)
         return template_scaled
     
     def auto_find_image(self, calibration, save=True, multiple=False, bbox_required=True, add_start_index=None, stop_index=None):
@@ -1969,16 +1983,20 @@ class Dark_Sol(QMainWindow):
         self.move_and_click(config["positions"]["auto add button"]["center"])
         time.sleep(0.1)
         second = get_green_amount(bbox)
+        
         if first > second:
             more_green = "FIRST"
+            mkey.left_click()
             print("double clicked auto add button as it was already active")
         elif second > first:
             more_green = "SECOND"
             print("clicked auto add button")
-        else:
+        elif first == second:
             more_green = "TIE"
-        print(
-            f"first_conf={(first*100):.0f} second_conf={(second*100):.0f} more_green={more_green}")
+        else:
+            raise Exception("Unexpected case in auto add button check")
+        print(f"first_conf={(first*100):.0f} second_conf={(second*100):.0f} more_green={more_green}")
+        
 
     def move_and_click(self, position, click=True):
         try:
@@ -2133,6 +2151,7 @@ class Dark_Sol(QMainWindow):
                 self.move_and_click(config["positions"]["potion menu item button"]["center"])
                 self.log("Searching for:", item.capitalize())
                 self.search_for_potion(item)
+                self.check_auto_add_button()
                 item_ready = True
                 print(f"{item.capitalize()} set to ready")
                 self.log("Checking All Buttons")
