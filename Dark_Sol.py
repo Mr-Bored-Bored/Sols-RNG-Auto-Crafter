@@ -27,6 +27,7 @@
 23. Add roblox windows selector
 26. Rename calibration buttons
 27. Make config creation be added to log after it is created due to the fact config is made before log is created
+28. Fix manual scroll calibration
 - Mini Status Label
 27. Make Mini Status Label movable (when moving make it show largest size)
 28. make mini status label wrapable
@@ -49,6 +50,7 @@
 9. Add the ability to reset templates to default by pulling from the repo
 
 # Planned for the future:
+1. Global dpi, resolution, scale stuff, and etc
 1. Make all hardcoded resolutions dynamic (aka figure out how scaling works)(just praying current code scales atp)
 2. Add main and auto updater reinstall arguements
 3. Fix multi monitor awareness
@@ -69,6 +71,7 @@
 18. Add private server reconnects (paths needed)
 19. Make macro full screen compatible (only needs template rescaling adjustment(i think))
 20. Improve logs
+21. Complete overhall and  usage of multi classes
 - Mini Status Label
 21. Make mini status label show auto add waitlist and add setting for it 
 
@@ -1283,7 +1286,7 @@ class Dark_Sol(QMainWindow):
         for calibration in config["positions"].keys():
             try:
                 bbox = config["positions"][calibration]["bbox"]
-            except TypeError or KeyError:
+            except (TypeError, KeyError):
                 bbox = None
                 continue
             if self.calibrations_overlay_active:
@@ -1673,17 +1676,18 @@ class Dark_Sol(QMainWindow):
             QMessageBox.warning(self, "Screen Not Found", "Could not find a screen at the specified coordinates.")
             return
 
+        screen_geo = screen.geometry()
+
         overlay_window = QWidget()
         overlay_window.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.WindowTransparentForInput)
         overlay_window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         overlay_window.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        overlay_window.setGeometry(0, 0, screen_width, screen_height)
+        overlay_window.setGeometry(screen_geo)
         overlay_window.show()
         overlay_window.raise_()
 
-        local_x = x_scaled - screen_width
-        local_y = y_scaled - screen_height
-
+        local_x = x_scaled - screen_geo.x()
+        local_y = y_scaled - screen_geo.y()
         outline_frame = QFrame(overlay_window)
         outline_frame.setGeometry(QRect(local_x, local_y, w_scaled, h_scaled))
 
