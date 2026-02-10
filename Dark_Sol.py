@@ -33,6 +33,7 @@
 31. Add crafted detection
 32. For manual craft potions add a counter
 33. Add ability to craft Limbo potions
+34. Make ps join button check for ps link
 - Mini Status Label
 27. Make Mini Status Label movable (when moving make it show largest size)
 28. make mini status label wrapable
@@ -106,14 +107,14 @@ scale = dpi / 96.0
 screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
 # Imports
-import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con
+import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con, re
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout,
 QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog,
-QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QSlider, QRubberBand, QPlainTextEdit)
+QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QSlider, QRubberBand, QPlainTextEdit, QLineEdit)
 
-from PyQt6.QtGui import QIcon, QGuiApplication, QColor, QPainter
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint, QEventLoop
+from PyQt6.QtGui import QIcon, QGuiApplication, QColor, QPainter, QDesktopServices
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint, QEventLoop, QUrl
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PIL import Image, ImageGrab
 from mousekey import MouseKey
@@ -233,7 +234,6 @@ hidden_config = {
         "add completed checkmark 4": {"bbox": [942, 620, 978, 650], "center": [960, 480]},
         "add completed checkmark 5": {"bbox": [942, 657, 978, 687], "center": [960, 480]}
     },
-    "current_preset": "Main",
     "item presets": {
         "Main": {
             "bound": {
@@ -285,7 +285,9 @@ hidden_config = {
                 "collapsed": False
             }
         }
-    }
+    },
+    "current_preset": "Main",
+    "private server link": ""
 }
 if config_path.exists() and not use_built_in_config:
     with open(config_path, "r", encoding="utf-8") as f:
@@ -576,6 +578,10 @@ class Dark_Sol(QMainWindow):
         self.set_potion_selection_button_coordinates = QPushButton("Set Potion Selection Button Coordinates")
         self.calibrate_add_completed_checkmarks_button = QPushButton("Calibrate Add Completed Checkmarks")
         self.manually_calibrate_scrolling_button = QPushButton("Calibrate Scroll Amounts")
+        # Settings Tab
+        self.ps_link_line = QLineEdit()
+        self.ps_link_save_button = QPushButton("Save Private Server Link")
+        self.ps_link_join_button = QPushButton("Join Private Server")
         # Mini Status Label 
         self.mini_status_widget = QWidget()
         self.general_mini_status_label = QLabel("Stopped")
@@ -728,6 +734,17 @@ class Dark_Sol(QMainWindow):
         self.calibrations_tab_main_vbox.addWidget(self.calibrations_stack)
         self.calibrations_stack.setCurrentIndex(0)
         self.calibrations_tab.setLayout(self.calibrations_tab_main_vbox)
+        # Settings Tab Layout
+        settings_tab_vbox = QVBoxLayout(self.settings_tab)
+        settings_tab_vbox.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.ps_link_line.setPlaceholderText("Enter Private Server Link Here")
+        settings_tab_vbox.addWidget(self.ps_link_line)
+        self.ps_link_save_button
+        settings_tab_vbox.addWidget(self.ps_link_save_button)
+        self.ps_link_join_button
+        self.ps_link_join_button.setToolTip("Must save private server before clicking")
+        settings_tab_vbox.addWidget(self.ps_link_join_button)
+        
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
         self.show_calibration_overlays_button.clicked.connect(lambda: self.show_calibration_overlays())
@@ -761,6 +778,8 @@ class Dark_Sol(QMainWindow):
         self.calibrate_add_completed_checkmarks_button.clicked.connect(lambda: self.manual_calibration("add completed checkmark"))
         self.calibrate_add_completed_checkmarks_button.clicked.connect(lambda: self.manual_checkmarks_calibration())
         self.manually_calibrate_scrolling_button.clicked.connect(lambda: self.manual_scroll_calibration())
+        self.ps_link_save_button.clicked.connect(lambda: (config.__setitem__("private server link", self.ps_link_line.text()), nice_config_save()))
+        self.ps_link_join_button.clicked.connect(lambda: self.open_roblox(config["private server link"]))
 
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
@@ -801,6 +820,137 @@ class Dark_Sol(QMainWindow):
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
  
+    def open_roblox(self, link):
+        def convert_roblox_link(url):
+            game_pattern = r"https://www.roblox.com/games/(\d+)/[^?]+\?privateServerLinkCode=(\d+)"
+            share_pattern = r"https://www.roblox.com/share\?code=([a-f0-9]+)&type=([A-Za-z]+)"
+            match_game = re.match(game_pattern, url)
+            if match_game:
+                place_id = match_game.group(1)
+                link_code = match_game.group(2)
+                if place_id != "15532962292":
+                    return None
+                link_code = "".join(filter(str.isdigit, link_code))
+                return f"roblox://placeID={place_id}&linkCode={link_code}"
+
+            match_share = re.match(share_pattern, url)
+            if match_share:
+                code = match_share.group(1)
+                share_type = match_share.group(2)
+                if "Server" in share_type:
+                    share_type = "Server"
+                elif "ExperienceInvite" in share_type:
+                    share_type = "ExperienceInvite"
+                return f"roblox://navigation/share_links?code={code}&type={share_type}"
+            
+        main_url = convert_roblox_link(link)
+        QDesktopServices.openUrl(QUrl(main_url))
+
+    def reload_potion_gui(self, link): # This is specifically for you @Manas
+        self.open_roblox(link)
+
+        while not self.focus_roblox():
+            time.sleep(0.2)
+
+        self.move_and_click((40,500))
+        self.move_and_click((380,170))
+
+        mkey.right_mouse_down()
+        try:
+            mkey.move_to_natural_relative(0, 2000)
+        except Exception:
+            mkey.move_relative(0,2000)
+
+        mkey.right_mouse_up()
+        time.sleep(0.3938)
+        keyboard.Controller().press('s')
+        time.sleep(0.0059)
+        keyboard.Controller().press('a')
+        time.sleep(3.1014)
+        keyboard.Controller().release('a')
+        time.sleep(3.0857)
+        keyboard.Controller().release('s')
+        time.sleep(0.1841)
+        keyboard.Controller().press('d')
+        time.sleep(0.9020)
+        keyboard.Controller().press('s')
+        time.sleep(0.3860)
+        keyboard.Controller().release('s')
+        time.sleep(0.0772)
+        keyboard.Controller().release('d')
+        time.sleep(0.1619)
+        keyboard.Controller().press('w')
+        time.sleep(0.1413)
+        keyboard.Controller().release('w')
+        time.sleep(0.0856)
+        keyboard.Controller().press(keyboard.Key.space)
+        time.sleep(0.1184)
+        keyboard.Controller().press('d')
+        time.sleep(0.0255)
+        keyboard.Controller().release(keyboard.Key.space)
+        time.sleep(0.2294)
+        keyboard.Controller().release('d')
+        time.sleep(0.2628)
+        keyboard.Controller().press('s')
+        time.sleep(0.6789)
+        keyboard.Controller().press('a')
+        time.sleep(0.9100)
+        keyboard.Controller().release('a')
+        time.sleep(0.9474)
+        keyboard.Controller().press('a')
+        time.sleep(0.1487)
+        keyboard.Controller().release('a')
+        time.sleep(3.9572)
+        keyboard.Controller().press('a')
+        time.sleep(2.2367)
+        keyboard.Controller().release('a')
+        time.sleep(0.3313)
+        keyboard.Controller().press('a')
+        time.sleep(0.1747)
+        keyboard.Controller().release('a')
+        time.sleep(0.7474)
+        keyboard.Controller().press('a')
+        time.sleep(1.2850)
+        keyboard.Controller().release('a')
+        time.sleep(0.0758)
+        keyboard.Controller().release('s')
+        time.sleep(0.2941)
+        keyboard.Controller().press('w')
+        time.sleep(0.0029)
+        keyboard.Controller().press('d')
+        time.sleep(0.2300)
+        keyboard.Controller().release('d')
+        time.sleep(0.0002)
+        keyboard.Controller().release('w')
+        time.sleep(0.2077)
+        keyboard.Controller().press(keyboard.Key.space)
+        time.sleep(0.0041)
+        keyboard.Controller().press('s')
+        time.sleep(0.1679)
+        keyboard.Controller().release(keyboard.Key.space)
+        time.sleep(0.5104)
+        keyboard.Controller().release('s')
+        time.sleep(0.0555)
+        keyboard.Controller().press('a')
+        time.sleep(0.0881)
+        keyboard.Controller().press(keyboard.Key.space)
+        time.sleep(0.1990)
+        keyboard.Controller().release(keyboard.Key.space)
+        time.sleep(2.8905)
+        keyboard.Controller().release('a')
+        time.sleep(0.0732)
+        keyboard.Controller().press('s')
+        time.sleep(1.8236)
+        keyboard.Controller().release('s')
+        time.sleep(2.6950)
+        keyboard.Controller().press('a')
+        time.sleep(0.7439)
+        keyboard.Controller().release('a')
+        time.sleep(0.2463)
+        keyboard.Controller().press('f')
+        time.sleep(0.0868)
+        keyboard.Controller().release('f')
+
     def manual_calibration(self, calibration_name, save=True):
         def select_region():
             loop = QEventLoop()
