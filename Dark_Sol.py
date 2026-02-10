@@ -28,10 +28,16 @@
 26. Rename calibration buttons
 27. Make config creation be added to log after it is created due to the fact config is made before log is created
 28. Fix manual scroll calibration
+29. Add complete exception handling(message box that handles all exceptions and logs them)
+30. Add macro pause and unpause auto add button check
+31. Add crafted detection
+32. For manual craft potions add a counter
+33. Add ability to craft Limbo potions
 - Mini Status Label
 27. Make Mini Status Label movable (when moving make it show largest size)
 28. make mini status label wrapable
 29. Add private server rejoin for calibrations toggle in settings tab
+30. Fix Status Bar showing general status instead of task
 - Final Checks
 30. Remove excess delays / slowdowns (ensure reliability)
 31. Check print statements and remove unnecessary ones
@@ -494,7 +500,7 @@ class loading_screen(QWidget):
 class Dark_Sol(QMainWindow):
     start_macro_signal = pyqtSignal()
     stop_macro_signal = pyqtSignal()
-    status_signal = pyqtSignal(str, bool)
+    status_signal = pyqtSignal(str, str)
     macro_stopped_signal = pyqtSignal()
     log_signal = pyqtSignal(str)
 
@@ -1629,7 +1635,7 @@ class Dark_Sol(QMainWindow):
             elif key == keyboard.Key.f3:
                 if not self.scroll_calibration_safety_check:
                     self.scroll_calibration_safety_check = True
-            elif key == keyboard.Key.f11:
+            elif key == keyboard.Key.f7:
                 os._exit(1)
         _main_hotkey_listener = keyboard.Listener(on_press=on_press)
         _main_hotkey_listener.start()
@@ -1956,6 +1962,7 @@ class Dark_Sol(QMainWindow):
         self.log_signal.emit(" ".join(str(a) for a in args))
 
     def inner_log(self, log_message):
+        print(log_message)
         self.log_area.appendPlainText(log_message)
         log_scroll_bar = self.log_area.verticalScrollBar()
         if log_scroll_bar is not None:
@@ -1963,16 +1970,17 @@ class Dark_Sol(QMainWindow):
 
     def update_status(self, *args, what_to_update="Task"):
         status_text = " ".join(str(a) for a in args)
-        self.status_signal.emit(status_text, bool(what_to_update))
+        self.status_signal.emit(status_text, str(what_to_update))
         
     def inner_update_status(self, status_text, what_to_update="Task"):
-        if what_to_update == "General" or "Both":
+        if what_to_update in ("General", "Both"):
             self.log("Status:", status_text)
             self.status_label.setText(f"Status: {status_text}")
             if self.general_mini_status_label != None:
                 self.general_mini_status_label.setText(f"Status: {status_text}")
                 self.general_mini_status_label.adjustSize()
-        elif what_to_update == "Task" or "Both":
+
+        if what_to_update in ("Task", "Both"):
             self.log("Current Task:", status_text)
             if self.mini_status_label != None:
                 self.mini_status_label.setText(f"Current Task: {status_text}")
@@ -1990,7 +1998,7 @@ class Dark_Sol(QMainWindow):
 
         def get_green_amount(bbox):
             img = ImageGrab.grab(bbox).convert("RGB")
-            if img is None or float:
+            if img is None:
                 return False
             
             width, height = img.size
@@ -2000,7 +2008,7 @@ class Dark_Sol(QMainWindow):
             considered = 0
             for yy in range(0, height):
                 for xx in range(0, width):
-                    r, g, b = pixels[xx, yy]
+                    r, g, b = pixels[xx, yy] # type: ignore
 
                     max_rgb = max(r, g, b)
                     delta = g - max(r, b)
@@ -2021,6 +2029,7 @@ class Dark_Sol(QMainWindow):
         
         if first > second:
             more_green = "FIRST"
+            time.sleep(0.1)
             mkey.left_click()
             self.log("double clicked auto add button as it was already active")
         elif second > first:
@@ -2185,7 +2194,6 @@ class Dark_Sol(QMainWindow):
                 self.move_and_click(config["positions"]["potion menu item button"]["center"])
                 self.update_status("Searching for:", item.capitalize())
                 self.search_for_potion(item)
-                self.check_auto_add_button()
                 item_ready = True
                 self.log(f"{item.capitalize()} set to ready")
                 self.update_status("Checking All Buttons")
