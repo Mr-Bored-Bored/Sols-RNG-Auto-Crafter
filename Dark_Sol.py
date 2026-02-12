@@ -2,48 +2,63 @@
 # Tasks (For Mr. Bored)
 
 # Necessary for First Release:
-1. Implement Semi-Auto and Manual Calibration modes
-2. Add auto updater
+- Calibrations
+1. Implement Semi-Auto Calibration mode
+2. Fix manual scroll calibration
 3. Improve calibration gui / fix it to support new systems
-4. Add debug log
-5. For multi template template settings only have the previous ones
-6. Fix scroll calibration status bar appearing at the wrong time
-7. Have scroll calibration show calibration amounts if successful
-8. Add scroll calibration template adjustment settings when using calibrate scrolls button
-9. Pull lib from repo
-10. Make it so that macro cant start until calibrations are complete
-11. Make it so that you can close auto calibrate and then resume where you left off
-12. Make skip loading debug skip creating the loading screen at all
-13. Make all msg boxes use the same function if possible
-14. Make create external msg box function also able to create internal msg boxes
-15. Change everything from calibration name to position name (calibration name is confusing since it applies to both calibrations and templates)
-16. Create manual calibration function for scroll amounts using a counter prefer auto though
-17. make adjust template use multiple variable instead of excess multi settings variable
-18. Add verifications before runnning certain calibrations
-19. Make scroll calibration slightly automatic using pixel detection for new item detection
-20. Add donation stuff
-21. Add paths for auto rejoin and auto calibrations
-22. Add roblox detected check if using for sols check
-23. Add roblox windows selector
-26. Rename calibration buttons
-27. Make config creation be added to log after it is created due to the fact config is made before log is created
-28. Fix manual scroll calibration
-29. Add complete exception handling(message box that handles all exceptions and logs them)
-30. Add macro pause and unpause auto add button check
-31. Add crafted detection
-32. For manual craft potions add a counter
-33. Add ability to craft Limbo potions
-34. Make ps join button check for ps link
+4. For multi template, template settings only have the previous ones
+5. Fix scroll calibration status bar appearing at the wrong time
+6. Have scroll calibration show calibration amounts if successful
+7. Add scroll calibration template adjustment settings when using calibrate scrolls button
+8. Make it so that macro cant start until calibrations are complete
+9. Make it so that you can close auto calibrate and then resume where you left off
+10. Add verifications before runnning certain calibrations
+11. Rename calibration buttons
+12. make adjust template use multiple variable instead of excess multi settings variable
+13. Make manual calibration have a single position thing instead of a box for some calibrations
+14. Add ability to repull templates from repo
+
+- Logs
+14. Add debug log file
+15. Make config creation be added to log after it is created due to the fact config is made before log is created
+16. Change rescale template logs to be less cluttered
+
+- Random
+17. Add auto updater
+18. Pull lib from repo
+19. Make skip loading debug skip creating the loading screen at all
+20. Make all msg boxes use the same function if possible
+21. Make create external msg box function also able to create internal msg boxes
+22. Change everything from calibration name to position name (calibration name is confusing since it applies to both calibrations and templates)
+23. Make scroll calibration slightly automatic using pixel detection for new item detection
+24. Add donation stuff
+25. Add paths for auto rejoin and auto calibrations
+26. Add roblox detected check if using for sols check
+27. Add roblox windows selector
+28. Add complete exception handling(message box that handles all exceptions and logs them)
+29. Add macro pause and unpause auto add button check
+30. Add crafted detection
+31. For manual craft potions add a counter
+32. Add ability to craft Limbo potions
+33. Make ps join button check for ps link
+34. Add collection camera reset for pathing to cauldron
+35. Make calibration stuff for play button and update auto calibrate to support it
+36. Make reload config gui check for button instead of using manual timer
+37. Add play button to auto calibrate
+38. Make safe image find function have the ability to not save
+39. Make reload potion gui function wait for roblox to close 
+
 - Mini Status Label
-27. Make Mini Status Label movable (when moving make it show largest size)
-28. make mini status label wrapable
-29. Add private server rejoin for calibrations toggle in settings tab
-30. Fix Status Bar showing general status instead of task
+40. Make Mini Status Label movable (when moving make it show largest size)
+41. make mini status label wrapable
+42. Add private server rejoin for calibrations toggle in settings tab
+43. Fix Status Bar showing general status instead of task
+
 - Final Checks
-30. Remove excess delays / slowdowns (ensure reliability)
-31. Check print statements and remove unnecessary ones
-32. Verify macro can handle everything after entering potion craft gui
-33. Verify roblox detected check works and prevents macro from running if not detected
+44. Remove excess delays / slowdowns (ensure reliability)
+45. Check print statements and remove unnecessary ones
+46. Verify macro can handle everything after entering potion craft gui
+47. Verify roblox detected check works and prevents macro from running if not detected
 
 # Might be added for First Release:
 1. Add multi template for single calibration
@@ -79,6 +94,10 @@
 19. Make macro full screen compatible (only needs template rescaling adjustment(i think))
 20. Improve logs
 21. Complete overhall and  usage of multi classes
+21. Auto Quest Plugin Depending on what cresqnt says
+22. Make auto rare biome popping plugin
+23. Make it so that you can adjust wait time after reset in settings
+24. Make it so that rescaled templates are saved so the function doesnt have to be called every time
 - Mini Status Label
 21. Make mini status label show auto add waitlist and add setting for it 
 
@@ -334,6 +353,9 @@ data = {
                     "add completed checkmark": {
                         "sub calibrations": ["add completed checkmark 1", "add completed checkmark 2", "add completed checkmark 3", "add completed checkmark 4", "add completed checkmark 5"],
                         "image path": "add completed checkmark.png"
+                        },
+                    "play button": {
+                        "image path": "play button.png"
                         }
                     },
                 "template data": {
@@ -378,6 +400,10 @@ data = {
                         "resolution": (1920, 1200)
                         },
                     "add completed checkmark.png": {
+                        "scale": 1.25,
+                        "resolution": (1920, 1200)
+                        },
+                    "play button.png": {
                         "scale": 1.25,
                         "resolution": (1920, 1200)
                         }
@@ -534,7 +560,7 @@ class Dark_Sol(QMainWindow):
         self.down_chevron_svg = str(local_appdata_directory / "Lib" / "Icons" / "down chevron.svg")
         self.up_chevron_disabled_svg = str(local_appdata_directory / "Lib" / "Icons" / "up chevron disabled.svg")
         # Create Calibration Tab Elements
-        self.calibrated_positions = []
+        self.completed_calibrations = []
         self.calibration_mode = "auto"
         self.calibration_mode_button = QPushButton("Current Mode: Automatic Calibration")
         self.show_calibration_overlays_button = QPushButton("Show Calibration Overlays")
@@ -616,7 +642,7 @@ class Dark_Sol(QMainWindow):
             self.debug_tab_qv_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
             self.debug_tab.setLayout(self.debug_tab_qv_layout)
 
-            self.debug_test_button_1.clicked.connect(lambda: self.log("Test Button 1 Pressed"))
+            self.debug_test_button_1.clicked.connect(lambda: self.reload_potion_gui())
             self.debug_test_button_2.clicked.connect(lambda: self.log("Test Button 2 Pressed"))
             self.debug_test_button_3.clicked.connect(lambda: self.log("Test Button 3 Pressed"))
             self.debug_test_button_4.clicked.connect(lambda: self.log("Test Button 4 Pressed"))
@@ -820,6 +846,16 @@ class Dark_Sol(QMainWindow):
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
  
+    def change_template(self, template_name):
+        image_location = data["calibration data"][template_name]["image path"]
+        image_path = str(local_appdata_directory / "Lib" / "Templates" / image_location)
+        while not (new_template_bbox := self.select_region()):
+            pass
+        ImageGrab.grab(new_template_bbox).save(image_path)
+
+    def reset_template(self, template_name):
+        pass
+
     def open_roblox(self, link):
         def convert_roblox_link(url):
             game_pattern = r"https://www.roblox.com/games/(\d+)/[^?]+\?privateServerLinkCode=(\d+)"
@@ -846,23 +882,28 @@ class Dark_Sol(QMainWindow):
         main_url = convert_roblox_link(link)
         QDesktopServices.openUrl(QUrl(main_url))
 
-    def reload_potion_gui(self, link): # This is specifically for you @Manas
-        self.open_roblox(link)
+    def reload_potion_gui(self):
+        self.open_roblox(config["private server link"])
 
-        while not self.focus_roblox():
-            time.sleep(0.2)
-
+        while True:
+            self.focus_roblox()
+            if self.auto_find_image("play button", save=False, ignore_match_not_found=True):
+                self.move_and_click((270,1050))
+                break
+            time.sleep(1)
+        
+        time.sleep(2)
         self.move_and_click((40,500))
-        self.move_and_click((380,170))
+        self.move_and_click((414,163))
 
+        time.sleep(0.2)
         mkey.right_mouse_down()
-        try:
-            mkey.move_to_natural_relative(0, 2000)
-        except Exception:
-            mkey.move_relative(0,2000)
-
+        time.sleep(0.2)
+        mkey.move_relative(0, screen_height*2)
+        time.sleep(0.2)
         mkey.right_mouse_up()
-        time.sleep(0.3938)
+
+        time.sleep(5)
         keyboard.Controller().press('s')
         time.sleep(0.0059)
         keyboard.Controller().press('a')
@@ -950,92 +991,96 @@ class Dark_Sol(QMainWindow):
         keyboard.Controller().press('f')
         time.sleep(0.0868)
         keyboard.Controller().release('f')
+        keyboard.Controller().press('d')
+        time.sleep(1)
+        keyboard.Controller().release('d')
 
-    def manual_calibration(self, calibration_name, save=True):
-        def select_region():
-            loop = QEventLoop()
-            selection_result = None
+    def select_region(self):
+        loop = QEventLoop()
+        selection_result = None
 
-            widget = QWidget()
-            widget.setWindowFlags(
-                Qt.WindowType.FramelessWindowHint
-                | Qt.WindowType.WindowStaysOnTopHint
-                | Qt.WindowType.Tool
-            )
-            widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-            widget.setMouseTracking(True)
-            widget.setCursor(Qt.CursorShape.CrossCursor)
+        widget = QWidget()
+        widget.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+        )
+        widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        widget.setMouseTracking(True)
+        widget.setCursor(Qt.CursorShape.CrossCursor)
 
-            selection_band = QRubberBand(QRubberBand.Shape.Rectangle, widget)
-            drag_start = QPoint()
+        selection_band = QRubberBand(QRubberBand.Shape.Rectangle, widget)
+        drag_start = QPoint()
 
-            def refresh_screen_metrics() -> None: 
-                hwnd = int(widget.winId())
+        def refresh_screen_metrics() -> None: 
+            hwnd = int(widget.winId())
 
-            def paint_event(event):  # type: ignore[no-untyped-def]
-                p = QPainter(widget)
-                p.fillRect(widget.rect(), QColor(120, 120, 120, 80))
-                p.end()
+        def paint_event(event):  # type: ignore[no-untyped-def]
+            p = QPainter(widget)
+            p.fillRect(widget.rect(), QColor(120, 120, 120, 80))
+            p.end()
 
-            def key_press_event(event):  # type: ignore[no-untyped-def]
-                if event is None:
-                    return
-                if event.key() == Qt.Key.Key_Escape:
-                    loop.quit()
-
-            def mouse_press_event(event):  # type: ignore[no-untyped-def]
-                nonlocal drag_start
-                if event is None:
-                    return
-                if event.button() != Qt.MouseButton.LeftButton:
-                    return
-                drag_start = event.pos()
-                selection_band.setGeometry(QRect(drag_start, drag_start))
-                selection_band.show()
-
-            def mouse_move_event(event):  # type: ignore[no-untyped-def]
-                if event is None:
-                    return
-                if not selection_band.isVisible():
-                    return
-                selection_band.setGeometry(QRect(drag_start, event.pos()).normalized())
-
-            def mouse_release_event(event):  # type: ignore[no-untyped-def]
-                nonlocal selection_result
-                if event is None:
-                    return
-                if event.button() != Qt.MouseButton.LeftButton:
-                    return
-                selection_rect = selection_band.geometry().normalized()
-                selection_band.hide()
-
-                top_left_global = widget.mapToGlobal(selection_rect.topLeft())
-                bottom_right_global = widget.mapToGlobal(
-                    QPoint(selection_rect.right() + 1, selection_rect.bottom() + 1)
-                )
-                tl_x = int(round(top_left_global.x() * scale))
-                tl_y = int(round(top_left_global.y() * scale))
-                br_x = int(round(bottom_right_global.x() * scale))
-                br_y = int(round(bottom_right_global.y() * scale))
-                selection_result = ((tl_x, tl_y), (br_x, br_y))
+        def key_press_event(event):  # type: ignore[no-untyped-def]
+            if event is None:
+                return
+            if event.key() == Qt.Key.Key_Escape:
                 loop.quit()
 
-            widget.paintEvent = paint_event  # type: ignore[method-assign]
-            widget.keyPressEvent = key_press_event  # type: ignore[method-assign]
-            widget.mousePressEvent = mouse_press_event  # type: ignore[method-assign]
-            widget.mouseMoveEvent = mouse_move_event  # type: ignore[method-assign]
-            widget.mouseReleaseEvent = mouse_release_event  # type: ignore[method-assign]
+        def mouse_press_event(event):  # type: ignore[no-untyped-def]
+            nonlocal drag_start
+            if event is None:
+                return
+            if event.button() != Qt.MouseButton.LeftButton:
+                return
+            drag_start = event.pos()
+            selection_band.setGeometry(QRect(drag_start, drag_start))
+            selection_band.show()
 
-            widget.showFullScreen()
-            QTimer.singleShot(0, refresh_screen_metrics)
-            loop.exec()
+        def mouse_move_event(event):  # type: ignore[no-untyped-def]
+            if event is None:
+                return
+            if not selection_band.isVisible():
+                return
+            selection_band.setGeometry(QRect(drag_start, event.pos()).normalized())
+
+        def mouse_release_event(event):  # type: ignore[no-untyped-def]
+            nonlocal selection_result
+            if event is None:
+                return
+            if event.button() != Qt.MouseButton.LeftButton:
+                return
+            selection_rect = selection_band.geometry().normalized()
             selection_band.hide()
-            widget.close()
-            return selection_result
 
+            top_left_global = widget.mapToGlobal(selection_rect.topLeft())
+            bottom_right_global = widget.mapToGlobal(
+                QPoint(selection_rect.right() + 1, selection_rect.bottom() + 1)
+            )
+            tl_x = int(round(top_left_global.x() * scale))
+            tl_y = int(round(top_left_global.y() * scale))
+            br_x = int(round(bottom_right_global.x() * scale))
+            br_y = int(round(bottom_right_global.y() * scale))
+            selection_result = ((tl_x, tl_y), (br_x, br_y))
+            loop.quit()
+
+        widget.paintEvent = paint_event  # type: ignore[method-assign]
+        widget.keyPressEvent = key_press_event  # type: ignore[method-assign]
+        widget.mousePressEvent = mouse_press_event  # type: ignore[method-assign]
+        widget.mouseMoveEvent = mouse_move_event  # type: ignore[method-assign]
+        widget.mouseReleaseEvent = mouse_release_event  # type: ignore[method-assign]
+
+        widget.showFullScreen()
+        QTimer.singleShot(0, refresh_screen_metrics)
+        loop.exec()
+        selection_band.hide()
+        widget.close()
+        return selection_result
+
+
+    def manual_calibration(self, calibration_name, save=True):
         self.focus_roblox()
         time.sleep(0.2)
-        result = select_region()
+        result = self.select_region()
         if result == None:
             self.log(f"Manual calibration for {calibration_name} was cancelled.")
         else:
@@ -1744,37 +1789,32 @@ class Dark_Sol(QMainWindow):
         self.calibrate_checkmarks()
 
     def focus_roblox(self):
-        allowed = {"WINDOWSCLIENT", "ROBLOXPLAYERBETA", "ROBLOXAPP"}
-        roblox_hwnd, found_window = None, False
-
-        def enum_handler(hwnd, lParam):
-            nonlocal roblox_hwnd, found_window
-            if not win32gui.IsWindowVisible(hwnd):
-                return
-
-            window_name = win32gui.GetWindowText(hwnd) or None
-            class_name = win32gui.GetClassName(hwnd) or None
-
-            if window_name is None or class_name is None:
-                return
-            
-            if "roblox" in window_name.lower():
-                self.log(f"Found Roblox window: '{window_name}' class: '{class_name}'")
-                found_window = True
-
-            if class_name.upper() in allowed and "roblox" in window_name.lower():
-                roblox_hwnd = hwnd
-
-        win32gui.EnumWindows(enum_handler, None)
-
-        if roblox_hwnd is None:
-            self.log("Roblox window not found." if not found_window else "Roblox window found, but has incorrect class.")
+        hwnd = win32gui.FindWindow(None, "Roblox")
+        if not hwnd:
+            print("Roblox window not found!")
             return False
 
-        if win32gui.IsIconic(roblox_hwnd):
-            win32gui.ShowWindow(roblox_hwnd, win32con.SW_RESTORE)
-        win32gui.SetForegroundWindow(roblox_hwnd)
+        if win32gui.IsIconic(hwnd):
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+        if win32gui.GetForegroundWindow() != hwnd:
+            try:
+                win32gui.BringWindowToTop(hwnd)
+                win32gui.SetForegroundWindow(hwnd)
+            except Exception:
+                print("Failed to bring Roblox to the foreground. It may be minimized or not responding.")
+
+        if win32gui.GetWindowPlacement(hwnd)[1] != win32con.SW_SHOWMAXIMIZED:
+            win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+
         return True
+
+    def close_roblox(self):
+        hwnd = ctypes.windll.user32.FindWindowW(None, "Roblox")
+        if hwnd:
+            ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE
+            time.sleep(0.2)
+            ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE
 
     def hotkey_listener(self):
         def on_press(key):
@@ -1787,9 +1827,11 @@ class Dark_Sol(QMainWindow):
                     self.scroll_calibration_safety_check = True
             elif key == keyboard.Key.f7:
                 os._exit(1)
-        _main_hotkey_listener = keyboard.Listener(on_press=on_press)
-        _main_hotkey_listener.start()
-        _main_hotkey_listener.join()
+            elif key == keyboard.Key.f4:
+                print(mkey.get_cursor_position())
+        main_hotkey_listener = keyboard.Listener(on_press=on_press)
+        main_hotkey_listener.start()
+        main_hotkey_listener.join()
 
     def setup_hotkeys(self):
         self.start_macro_signal.connect(self.start_macro)
@@ -1915,117 +1957,126 @@ class Dark_Sol(QMainWindow):
         template_scaled = template_img.resize((int(template_img.width * total_image_scale_x), int(template_img.height * total_image_scale_y)), Image.Resampling.LANCZOS)
         return template_scaled
     
-    def auto_find_image(self, calibration, save=True, multiple=False, bbox_required=True, add_start_index=None, stop_index=None):
-            template_path = f"{local_appdata_directory}\\Lib\\Images\\{data['calibration data'][calibration if calibration in data["calibration data"] else calibration[:-1].strip()]['image path']}"
-            return_bool = False
-             
-            def save_position(position_name, center, bbox):
-                if not save:
-                    return False
-                save_message_box = QMessageBox()
-                save_message_box.setWindowTitle("Save Position")
-                save_message_box.setText(f"Save position for '{position_name}'?")
-                save_button = save_message_box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
-                save_message_box.addButton("No", QMessageBox.ButtonRole.RejectRole)
-                save_message_box.setStyleSheet("""QLabel { color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
-                save_message_box.show()
-                save_message_box.raise_()
-                save_message_box.activateWindow()
-                save_message_box.exec()
-                if save_message_box.clickedButton() != save_button:
-                    return False
-                if bbox != None:
-                    config["positions"][position_name] = {"bbox": bbox, "center": center}
-                    nice_config_save()
-                else:
-                    config["positions"][position_name] = {"center": center}
-                    nice_config_save()
-                return True
-                    
-            def find_template():
-                self.focus_roblox()
-                time.sleep(0.2)
-                count = 0
-                bbox, center = None, None
-                nonlocal return_bool
-                return_bool = True
+    def auto_find_image(self, calibration, save=True, multiple=False, bbox_required=True, add_start_index=None, stop_index=None, ignore_match_not_found=False):
+        template_path = f"{local_appdata_directory}\\Lib\\Images\\{data['calibration data'][calibration if calibration in data["calibration data"] else calibration[:-1].strip()]['image path']}"
+        return_bool = False
+            
+        def save_position(position_name, center, bbox):
+            if not save:
+                return False
+            save_message_box = QMessageBox()
+            save_message_box.setWindowTitle("Save Position")
+            save_message_box.setText(f"Save position for '{position_name}'?")
+            save_button = save_message_box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
+            save_message_box.addButton("No", QMessageBox.ButtonRole.RejectRole)
+            save_message_box.setStyleSheet("""QLabel { color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
+            save_message_box.show()
+            save_message_box.raise_()
+            save_message_box.activateWindow()
+            save_message_box.exec()
+            if save_message_box.clickedButton() != save_button:
+                return False
+            if bbox != None:
+                config["positions"][position_name] = {"bbox": bbox, "center": center}
+                nice_config_save()
+            else:
+                config["positions"][position_name] = {"center": center}
+                nice_config_save()
+            return True
                 
-                try:
-                    if not multiple:
-                        match = pyautogui.locateOnScreen(template_scaled, confidence=config["data"]["calibration data"][calibration]["confidence"])
-                        if match == None:
-                            return_bool = False
-                            return
-                        bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))
-                        center = (int(match.left + match.width // 2), int(match.top + match.height // 2))
-                        self.log(f"  bbox : {bbox}, center: {center}")
+        def find_template():
+            if not ignore_match_not_found:
+                self.focus_roblox()
+            time.sleep(0.2)
+            count = 0
+            bbox, center = None, None
+            nonlocal return_bool
+            return_bool = True
+            
+            try:
+                if not multiple:
+                    match = pyautogui.locateOnScreen(template_scaled, confidence=config["data"]["calibration data"][calibration]["confidence"])
+                    print(match)
+                    bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))  # type: ignore[reportOptionalMemberAccess]
+                    center = (int(match.left + match.width // 2), int(match.top + match.height // 2))  # type: ignore[reportOptionalMemberAccess]
+                    self.log(f"  bbox : {bbox}, center: {center}")
+                    if save:
                         self.create_overlay(bbox, text=calibration)
                         return_bool = save_position(calibration, center, bbox if bbox_required else None)
                         self.create_overlay(bbox, text=calibration, disabled=True)
                         if return_bool == False:
                             return
 
-                    elif multiple:
-                        screen_w, screen_h = pyautogui.size()
-                        search_region = (0, 0, screen_w, screen_h)
+                elif multiple:
+                    screen_w, screen_h = pyautogui.size()
+                    search_region = (0, 0, screen_w, screen_h)
 
-                        for count, cal in enumerate(data["calibration data"][calibration[:-1].strip()]["sub calibrations"][add_start_index[0] if add_start_index != None else 0:int(calibration[-1])]):
-                            self.log("Searching for multiple matches...")
-                            match = pyautogui.locateOnScreen(template_scaled, confidence=config["data"]["calibration data"][cal]["confidence"], region=search_region)
-                            
-                            if match == None:
-                                return_bool = False
-                                return
+                    for count, cal in enumerate(data["calibration data"][calibration[:-1].strip()]["sub calibrations"][add_start_index[0] if add_start_index != None else 0:int(calibration[-1])]):
+                        self.log("Searching for multiple matches...")
+                        match = pyautogui.locateOnScreen(template_scaled, confidence=config["data"]["calibration data"][cal]["confidence"], region=search_region)
+                        
+                        if count == stop_index:
+                            return
+                        
+                        def get_image_data(match):
+                            nonlocal bbox, center
+                            bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))  # type: ignore[reportOptionalMemberAccess]
+                            center = (int(match.left + match.width // 2), int(match.top + match.height // 2))  # type: ignore[reportOptionalMemberAccess]
+                            self.log(f"  bbox : {bbox}, center: {center}")
 
-                            if count == stop_index:
-                                return
-                            
-                            def get_image_data(match):
-                                nonlocal bbox, center
-                                bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))
-                                center = (int(match.left + match.width // 2), int(match.top + match.height // 2))
-                                self.log(f"  bbox : {bbox}, center: {center}")
-
-                            if add_start_index == None:
-                                self.log("1st to 4th button logic")
-                                self.log(count)
-                                get_image_data(match)
+                        if add_start_index == None:
+                            self.log("1st to 4th button logic")
+                            self.log(count)
+                            get_image_data(match)
+                            if save:
                                 self.create_overlay(bbox, text=calibration)
                                 if not save_position(cal, center, bbox if bbox_required else None):
                                     return_bool = False
                                 self.create_overlay(bbox, text=calibration, disabled=True)
 
-                            elif add_start_index != None:
-                                self.log("5th button and up logic")
-                                self.log(count)
-                                get_image_data(match)
-                                if count in add_start_index[1]:
+                        elif add_start_index != None:
+                            self.log("5th button and up logic")
+                            self.log(count)
+                            get_image_data(match)
+                            if count in add_start_index[1]:
+                                if save:
                                     self.create_overlay(bbox, text=calibration)
                                     if not save_position(cal, center, bbox if bbox_required else None):
                                         return_bool = False
                                     self.create_overlay(bbox, text=calibration, disabled=True)
 
-                            match_height = (int(match.top) + int(match.height)) 
-                            search_region = (0, match_height, screen_w, screen_h - match_height)
-                except Exception as exception:
-                    self.create_overlay(disabled=True)
+                        match_height = (int(match.top) + int(match.height)) # type: ignore[reportOptionalMemberAccess]
+                        search_region = (0, match_height, screen_w, screen_h - match_height)
+                        return_bool = True
+            except Exception as exception:
+                self.create_overlay(disabled=True)
+                
+
+                if isinstance(exception, (pyautogui.ImageNotFoundException, pyscreeze_ImageNotFoundException))and ignore_match_not_found:
+                    pass
+                elif isinstance(exception, (pyautogui.ImageNotFoundException, pyscreeze_ImageNotFoundException)):
+                    self.log(f"No matches found for template: {template_path}")
                     match_exception_message_box = QMessageBox()
-                    if isinstance(exception, (pyautogui.ImageNotFoundException, pyscreeze_ImageNotFoundException)):
-                        self.log(f"No matches found for template: {template_path}")
-                        match_exception_message_box.setText(f"No Matches Found For: {calibration}")
-                    else:
-                        self.log(f"Error finding matches: {exception}")
-                        match_exception_message_box.setText(f"Error Finding Matches: {exception}")
+                    match_exception_message_box.setText(f"No Matches Found For: {calibration}")
                     match_exception_message_box.setStyleSheet("""QLabel { color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
                     match_exception_message_box.show()
                     match_exception_message_box.raise_()
                     match_exception_message_box.activateWindow()
                     match_exception_message_box.exec()
-                    return_bool = False
+                else:
+                    self.log(f"Error finding matches: {exception}")
+                    match_exception_message_box = QMessageBox()
+                    match_exception_message_box.setText(f"Error Finding Matches: {exception}")
+                    match_exception_message_box.setStyleSheet("""QLabel { color: cyan; font-size: 14pt;} QWidget {background-color: black;} QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}""")
+                    match_exception_message_box.show()
+                    match_exception_message_box.raise_()
+                    match_exception_message_box.activateWindow()
+                    match_exception_message_box.exec()
+                return_bool = False
 
-            template_scaled = self.rescale_template(data["calibration data"][calibration if calibration in data["calibration data"] else calibration[:-1].strip()]["image path"], template_path)
-            find_template()
-            return return_bool
+        template_scaled = self.rescale_template(data["calibration data"][calibration if calibration in data["calibration data"] else calibration[:-1].strip()]["image path"], template_path)
+        find_template()
+        return return_bool
 
     def calibrate_scrolling(self):
         template_path = self.rescale_template("add button.png", f"{local_appdata_directory}\\Lib\\Images\\add button.png")
