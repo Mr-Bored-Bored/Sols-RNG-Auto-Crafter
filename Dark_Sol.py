@@ -111,11 +111,18 @@
 
 # Completed (To write commit messages):
 """
+# Logs Backlog
+log_backlog = []
+def add_log(*args):
+    message = " ".join(str(arg) for arg in args)
+    print(message)
+    log_backlog.append(message)
 
 # Dev Tools
 use_built_in_config = False
 skip_loading = True
 create_debug_test_buttons = True
+add_log("Dev Tools Loaded")
 
 # DPI Setup
 import ctypes
@@ -127,6 +134,7 @@ LOGPIXELSX = 88
 dpi = gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
 scale = dpi / 96.0
 screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+add_log("DPI Tools Loaded")
 
 # Imports
 import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con, re, requests, io, zipfile
@@ -141,12 +149,14 @@ from pynput import keyboard, mouse
 from mousekey import MouseKey
 from copy import deepcopy
 import numpy as np
-
+add_log("Imports Loaded")
+                   
 # Setup Imports
 mkey = MouseKey()
 local_appdata_directory = pathlib.Path(os.environ["LOCALAPPDATA"]) / "Dark Sol"
 config_path = local_appdata_directory / "Dark Sol config.json"
 os.makedirs(local_appdata_directory, exist_ok=True)
+add_log("Imports Initalized")
 
 # Constants
 current_version = "0.0.0.0"
@@ -156,53 +166,53 @@ images_to_check = ("add button.png", "amount box.png", "auto add button.png", "c
                     "potion menu item button.png", "zeus potion selection button.png",
                     "poseidon potion selection button.png","hades potion selection button.png",
                     "add completed checkmark.png","play button.png")
-log_backlog = []
+add_log("Constants Loaded")
 
 # File Verification
 def download_from_repo(file, output_directory, tag=f"v{current_version}", folder=False, inner_folder_location=None):
     if inner_folder_location == None:
-        print(f"Downloading {file} from repo...")
-        print(f"URL: https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(file).replace(' ', '%20')}{".zip" if folder else ""}")
+        add_log(f"Downloading {file} from repo...")
+        add_log(f"URL: https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(file).replace(' ', '%20')}{".zip" if folder else ""}")
         github_file = requests.get(f"https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(file).replace(' ', '%20')}{".zip" if folder else ""}", timeout=20)
-        print(f"Finished downloading {file} from repo")
+        add_log(f"Finished downloading {file} from repo")
         file_content = github_file.content
-        print("Get file content")
-        print(file_content)
-        print("File Response Code:", github_file.status_code)
+        add_log("Get file content")
+        add_log(file_content)
+        add_log("File Response Code:", github_file.status_code)
         if github_file.status_code != 200:
             raise Exception(f"Failed to download {file} from repo, status code: {github_file.status_code}")
         output_directory.mkdir(parents=True, exist_ok=True)
-        print("Created output directory if it did not exist")
+        add_log("Created output directory if it did not exist")
         if folder:
-            print(f"Extracting {file} to {output_directory}...")
+            add_log(f"Extracting {file} to {output_directory}...")
             with zipfile.ZipFile(io.BytesIO(file_content)) as zip_extractor:
                 zip_extractor.extractall(output_directory)
-            print(f"Finished extracting {file} to {output_directory}")
+            add_log(f"Finished extracting {file} to {output_directory}")
         else:
-            print(f"Saving {file} to {output_directory}...")
+            add_log(f"Saving {file} to {output_directory}...")
             out_path = output_directory / str(file)
             with open(out_path, "wb") as f:
                 f.write(file_content)
-            print(f"Finished saving {file} to {out_path}")
+            add_log(f"Finished saving {file} to {out_path}")
     else:
-        print(f"Downloading {inner_folder_location[0]} from repo...")
-        print(f"URL: https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(inner_folder_location[0]).replace(' ', '%20')}{".zip" if folder else ""}")
+        add_log(f"Downloading {inner_folder_location[0]} from repo...")
+        add_log(f"URL: https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(inner_folder_location[0]).replace(' ', '%20')}{".zip" if folder else ""}")
         github_file = requests.get(f"https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(inner_folder_location[0]).replace(' ', '%20')}{".zip" if folder else ""}", timeout=20)
-        print(f"Finished downloading {inner_folder_location[0]} from repo")
+        add_log(f"Finished downloading {inner_folder_location[0]} from repo")
         file_content = github_file.content
-        print("File Response Code:", github_file.status_code)
+        add_log("File Response Code:", github_file.status_code)
         if github_file.status_code != 200:
             raise Exception(f"Failed to download {inner_folder_location[0]} from repo, status code: {github_file.status_code}")
         output_directory.mkdir(parents=True, exist_ok=True)
-        print("Created output directory if it did not exist")
-        print(f"Extracting {file} to {output_directory}...")
+        add_log("Created output directory if it did not exist")
+        add_log(f"Extracting {file} to {output_directory}...")
         with zipfile.ZipFile(io.BytesIO(file_content)) as zip_extractor:
-            print(zip_extractor.namelist()[:20])
+            add_log(zip_extractor.namelist()[:20])
             for name in zip_extractor.namelist():
                 if not name.startswith(inner_folder_location[1]) or name.endswith("/"):
-                    continue  # skip non-matching and directory entries
+                    continue
 
-                rel = name[len(inner_folder_location[1]):]                 # path inside the folder
+                rel = name[len(inner_folder_location[1]):]
                 out_path = output_directory / rel
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 out_path.write_bytes(zip_extractor.read(name))
@@ -210,22 +220,22 @@ def download_from_repo(file, output_directory, tag=f"v{current_version}", folder
 def verify_folders(folder, path, tag=f"v{current_version}"):
     folder_location = path / folder
     if not folder_location.exists():
-        print(f"{folder} does not exist, downloading...")
+        add_log(f"{folder} does not exist, downloading...")
         inner_prefix = "Lib/" if folder == "Lib" else f"Lib/{folder}/"
         download_from_repo(folder, folder_location, tag=tag, folder=True, inner_folder_location=("Lib", inner_prefix))
     else:
-        print(f"{folder} already exists, skipping download")
+        add_log(f"{folder} already exists, skipping download")
 
 def verify_files(file, path, tag=f"v{current_version}"):
     file_location = path / file
     if not file_location.exists():
-        print(f"{file} does not exist, downloading...")
+        add_log(f"{file} does not exist, downloading...")
         if path.name in ("Images", "Icons") and path.parent.name == "Lib":
             download_from_repo(file, path, tag=tag, folder=True, inner_folder_location=("Lib", f"Lib/{path.name}/"))
         else:
             download_from_repo(file, path, tag=tag)
     else:
-        print(f"{file} already exists, skipping download")
+        add_log(f"{file} already exists, skipping download")
 
 verify_folders("Lib", local_appdata_directory)
 
@@ -237,6 +247,8 @@ for image_file in images_to_check:
 
 for icon_file in icons_to_check:
     verify_files(icon_file, local_appdata_directory / "Lib" / "Icons")
+
+add_log("File Verification Completed")
 
 # Config and Data
 def nice_config_save(ind=4):
@@ -715,6 +727,7 @@ class Dark_Sol(QMainWindow):
         self.status_signal.connect(self.inner_update_status)
         self.log_signal.connect(self.inner_log)
         self.init_ui()
+        self.catch_up_log()
 
         if create_debug_test_buttons:
             self.debug_tab = QWidget()
@@ -940,6 +953,10 @@ class Dark_Sol(QMainWindow):
         self.stop_button.clicked.connect(self.stop_macro)
         self.setup_hotkeys()
  
+    def catch_up_log(self):
+        for log in log_backlog:
+            self.log(log)
+    
     def change_template(self, template_name):
         image_location = data["calibration data"][template_name]["image path"]
         image_path = str(local_appdata_directory / "Lib" / "Templates" / image_location)
@@ -1888,7 +1905,7 @@ class Dark_Sol(QMainWindow):
     def focus_roblox(self):
         hwnd = win32gui.FindWindow(None, "Roblox")
         if not hwnd:
-            print("Roblox window not found!")
+            self.log("Roblox window not found!")
             return False
 
         if win32gui.IsIconic(hwnd):
@@ -1899,7 +1916,7 @@ class Dark_Sol(QMainWindow):
                 win32gui.BringWindowToTop(hwnd)
                 win32gui.SetForegroundWindow(hwnd)
             except Exception:
-                print("Failed to bring Roblox to the foreground. It may be minimized or not responding.")
+                self.log("Failed to bring Roblox to the foreground. It may be minimized or not responding.")
 
         if win32gui.GetWindowPlacement(hwnd)[1] != win32con.SW_SHOWMAXIMIZED:
             win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
@@ -1925,7 +1942,7 @@ class Dark_Sol(QMainWindow):
             elif key == keyboard.Key.f7:
                 os._exit(1)
             elif key == keyboard.Key.f4:
-                print(mkey.get_cursor_position())
+                self.log(mkey.get_cursor_position())
         main_hotkey_listener = keyboard.Listener(on_press=on_press)
         main_hotkey_listener.start()
         main_hotkey_listener.join()
@@ -2093,7 +2110,7 @@ class Dark_Sol(QMainWindow):
             try:
                 if not multiple:
                     match = pyautogui.locateOnScreen(template_scaled, confidence=config["data"]["calibration data"][calibration]["confidence"])
-                    print(match)
+                    self.log(match)
                     bbox = (int(match.left), int(match.top), int(match.left + match.width), int(match.top + match.height))  # type: ignore[reportOptionalMemberAccess]
                     center = (int(match.left + match.width // 2), int(match.top + match.height // 2))  # type: ignore[reportOptionalMemberAccess]
                     self.log(f"  bbox : {bbox}, center: {center}")
@@ -2530,6 +2547,10 @@ class Dark_Sol(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    loader = loading_screen()
-    loader.show()
+    if skip_loading:
+        main_window = Dark_Sol()
+        main_window.show()
+    else:
+        loader = loading_screen()
+        loader.show()
     sys.exit(app.exec())
