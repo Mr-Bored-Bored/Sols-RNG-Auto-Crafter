@@ -17,6 +17,7 @@
 12. make adjust template use multiple variable instead of excess multi settings variable
 13. Make manual calibration have a single position thing instead of a box for some calibrations
 14. Add ability to repull templates from repo
+15. Make a list of features that show if the repo cannot be reached
 
 - Logs
 14. Add debug log file
@@ -47,6 +48,9 @@
 37. Add play button to auto calibrate
 38. Make safe image find function have the ability to not save
 39. Make reload potion gui function wait for roblox to close 
+40. Add logs to startup
+41. Add logs to calibrations (if needed idk check)
+42. 
 
 - Mini Status Label
 40. Make Mini Status Label movable (when moving make it show largest size)
@@ -112,40 +116,128 @@
 use_built_in_config = False
 skip_loading = True
 create_debug_test_buttons = True
+
 # DPI Setup
 import ctypes
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
-
 hdc = user32.GetDC(0)
 LOGPIXELSX = 88
 dpi = gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
 scale = dpi / 96.0
-
 screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
 # Imports
-import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con, re
-
+import os, sys, threading, pyautogui, time, ctypes, pathlib, json, win32gui, win32con, re, requests, io, zipfile
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QLabel, QWidget, QVBoxLayout,
 QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QStackedWidget, QComboBox, QLineEdit, QDialog,
 QDialogButtonBox, QScrollArea, QCheckBox, QFrame, QSlider, QRubberBand, QPlainTextEdit, QLineEdit)
-
 from PyQt6.QtGui import QIcon, QGuiApplication, QColor, QPainter, QDesktopServices
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QRect, QPoint, QEventLoop, QUrl
 from pyscreeze import ImageNotFoundException as pyscreeze_ImageNotFoundException
 from PIL import Image, ImageGrab
-from mousekey import MouseKey
 from pynput import keyboard, mouse
-import numpy as np
+from mousekey import MouseKey
 from copy import deepcopy
+import numpy as np
+
 # Setup Imports
 mkey = MouseKey()
 local_appdata_directory = pathlib.Path(os.environ["LOCALAPPDATA"]) / "Dark Sol"
 config_path = local_appdata_directory / "Dark Sol config.json"
-log_path = local_appdata_directory / "Dark Sol log.txt"
 os.makedirs(local_appdata_directory, exist_ok=True)
+
+# Constants
+current_version = "0.0.0.0"
+folders_to_check = ("Icons", "Images")
+icons_to_check = ("up chevron.svg", "down chevron.svg", "up chevron disabled.svg")
+images_to_check = ("add button.png", "amount box.png", "auto add button.png", "craft button.png", "potion search bar.png", "open recipe button.png",
+                    "potion menu item button.png", "zeus potion selection button.png",
+                    "poseidon potion selection button.png","hades potion selection button.png",
+                    "add completed checkmark.png","play button.png")
+log_backlog = []
+
+# File Verification
+def download_from_repo(file, output_directory, tag=f"v{current_version}", folder=False, inner_folder_location=None):
+    if inner_folder_location == None:
+        print(f"Downloading {file} from repo...")
+        print(f"URL: https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(file).replace(' ', '%20')}{".zip" if folder else ""}")
+        github_file = requests.get(f"https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(file).replace(' ', '%20')}{".zip" if folder else ""}", timeout=20)
+        print(f"Finished downloading {file} from repo")
+        file_content = github_file.content
+        print("Get file content")
+        print(file_content)
+        print("File Response Code:", github_file.status_code)
+        if github_file.status_code != 200:
+            raise Exception(f"Failed to download {file} from repo, status code: {github_file.status_code}")
+        output_directory.mkdir(parents=True, exist_ok=True)
+        print("Created output directory if it did not exist")
+        if folder:
+            print(f"Extracting {file} to {output_directory}...")
+            with zipfile.ZipFile(io.BytesIO(file_content)) as zip_extractor:
+                zip_extractor.extractall(output_directory)
+            print(f"Finished extracting {file} to {output_directory}")
+        else:
+            print(f"Saving {file} to {output_directory}...")
+            out_path = output_directory / str(file)
+            with open(out_path, "wb") as f:
+                f.write(file_content)
+            print(f"Finished saving {file} to {out_path}")
+    else:
+        print(f"Downloading {inner_folder_location[0]} from repo...")
+        print(f"URL: https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(inner_folder_location[0]).replace(' ', '%20')}{".zip" if folder else ""}")
+        github_file = requests.get(f"https://github.com/Mr-Bored-Bored/Dark-Sol/releases/download/{tag}/{str(inner_folder_location[0]).replace(' ', '%20')}{".zip" if folder else ""}", timeout=20)
+        print(f"Finished downloading {inner_folder_location[0]} from repo")
+        file_content = github_file.content
+        print("File Response Code:", github_file.status_code)
+        if github_file.status_code != 200:
+            raise Exception(f"Failed to download {inner_folder_location[0]} from repo, status code: {github_file.status_code}")
+        output_directory.mkdir(parents=True, exist_ok=True)
+        print("Created output directory if it did not exist")
+        print(f"Extracting {file} to {output_directory}...")
+        with zipfile.ZipFile(io.BytesIO(file_content)) as zip_extractor:
+            print(zip_extractor.namelist()[:20])
+            for name in zip_extractor.namelist():
+                if not name.startswith(inner_folder_location[1]) or name.endswith("/"):
+                    continue  # skip non-matching and directory entries
+
+                rel = name[len(inner_folder_location[1]):]                 # path inside the folder
+                out_path = output_directory / rel
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_bytes(zip_extractor.read(name))
+
+def verify_folders(folder, path, tag=f"v{current_version}"):
+    folder_location = path / folder
+    if not folder_location.exists():
+        print(f"{folder} does not exist, downloading...")
+        inner_prefix = "Lib/" if folder == "Lib" else f"Lib/{folder}/"
+        download_from_repo(folder, folder_location, tag=tag, folder=True, inner_folder_location=("Lib", inner_prefix))
+    else:
+        print(f"{folder} already exists, skipping download")
+
+def verify_files(file, path, tag=f"v{current_version}"):
+    file_location = path / file
+    if not file_location.exists():
+        print(f"{file} does not exist, downloading...")
+        if path.name in ("Images", "Icons") and path.parent.name == "Lib":
+            download_from_repo(file, path, tag=tag, folder=True, inner_folder_location=("Lib", f"Lib/{path.name}/"))
+        else:
+            download_from_repo(file, path, tag=tag)
+    else:
+        print(f"{file} already exists, skipping download")
+
+verify_folders("Lib", local_appdata_directory)
+
+for folder_to_check in folders_to_check:
+    verify_folders(folder_to_check, local_appdata_directory / "Lib")
+
+for image_file in images_to_check:
+    verify_files(image_file, local_appdata_directory / "Lib" / "Images")
+
+for icon_file in icons_to_check:
+    verify_files(icon_file, local_appdata_directory / "Lib" / "Icons")
+
 # Config and Data
 def nice_config_save(ind=4):
         S = (str, int, float, bool, type(None))
@@ -806,6 +898,8 @@ class Dark_Sol(QMainWindow):
         self.manually_calibrate_scrolling_button.clicked.connect(lambda: self.manual_scroll_calibration())
         self.ps_link_save_button.clicked.connect(lambda: (config.__setitem__("private server link", self.ps_link_line.text()), nice_config_save()))
         self.ps_link_join_button.clicked.connect(lambda: self.open_roblox(config["private server link"]))
+        self.set_add_button_template.clicked.connect(lambda: self.change_template("add button"))
+        self.set_amount_box_template.clicked.connect(lambda: self.change_template("amount box"))
 
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
@@ -849,9 +943,10 @@ class Dark_Sol(QMainWindow):
     def change_template(self, template_name):
         image_location = data["calibration data"][template_name]["image path"]
         image_path = str(local_appdata_directory / "Lib" / "Templates" / image_location)
-        while not (new_template_bbox := self.select_region()):
-            pass
-        ImageGrab.grab(new_template_bbox).save(image_path)
+        if not (new_template_bbox := self.select_region()):
+            return
+        else:
+            ImageGrab.grab(new_template_bbox).save(image_path)
 
     def reset_template(self, template_name):
         pass
@@ -893,6 +988,9 @@ class Dark_Sol(QMainWindow):
             time.sleep(1)
         
         time.sleep(2)
+        self.path_to_potion_gui()
+
+    def path_to_potion_gui(self):
         self.move_and_click((40,500))
         self.move_and_click((414,163))
 
@@ -1075,7 +1173,6 @@ class Dark_Sol(QMainWindow):
         selection_band.hide()
         widget.close()
         return selection_result
-
 
     def manual_calibration(self, calibration_name, save=True):
         self.focus_roblox()
