@@ -50,7 +50,25 @@
 39. Make reload potion gui function wait for roblox to close 
 40. Add logs to startup
 41. Add logs to calibrations (if needed idk check)
-42. 
+42. Make it so that there is a setting so that on start it doenst path to the potion gui and just starts
+43. Get normal path and set it so that in settings you can choose which path to use
+44. Make private server link line auto fill from config if it exists and save to config when changed (idk if it already saves)
+45. Check for roblox window and that sols rng is open by checking the logs for "place 15532962292" if not found rejoin sols rng with the ps if it exists and path to the potion gui if enabled
+46. Add a way to detect if sols rng is open (mainly if sols rng was the last game and the user left (use kicked log))
+47. Add potion gui entered check
+48. Make it so that the newest log is used (mainly for when a new log is created if you leave and join)(you can use the leave / disconnect codes to detect and then keep checking for the newest log and to make sure you dont join the old one at a timestamp check or something else like the file ID)
+49. Make it check if roblox is open and check the latest place so you have to get the join thing before the place if 
+50. Make it so that if you leave and join while the macro is running it detects the new log and rejoins the private server if the setting is enabled
+51. Concise all this stuff
+52. Add config corrupted check and fix config
+53. Make private server line edit have a label
+54. Add complete macro exception handling with message box and logging
+55. Add log file
+56. Make log wrapping better
+57. Add msgbox for when something is being downloaded from the repo
+58. Make requirements file and check what its file type should be 
+59. Add improved logging with log type and log file
+
 
 - Mini Status Label
 40. Make Mini Status Label movable (when moving make it show largest size)
@@ -677,8 +695,8 @@ class Dark_Sol(QMainWindow):
         self.find_craft_button = QPushButton("Find Craft Button")
         self.find_search_bar = QPushButton("Find Search Bar")
         self.find_potion_selection_button = QPushButton("Find Potion Selection Button")
-        self.auto_calibrate_add_completed_checkmarks_button = QPushButton("Auto Calibrate Add Completed Checkmarks")
-        self.auto_calibrate_scrolling_button = QPushButton("Auto Calibrate Scroll Amounts")
+        self.auto_calibrate_add_completed_checkmarks_button = QPushButton("Calibrate Add Completed Checkmarks")
+        self.auto_calibrate_scrolling_button = QPushButton("Calibrate Scroll Amounts")
         # Semi Auto Calibration Mode
         self.set_add_button_template = QPushButton("Set Add Button Template")
         self.set_amount_box_template = QPushButton("Set Amount Box Template")
@@ -706,12 +724,14 @@ class Dark_Sol(QMainWindow):
         self.set_craft_button_coordinates = QPushButton("Set Craft Button Coordinates")
         self.set_search_bar_coordinates = QPushButton("Set Search Bar Coordinates")
         self.set_potion_selection_button_coordinates = QPushButton("Set Potion Selection Button Coordinates")
-        self.calibrate_add_completed_checkmarks_button = QPushButton("Calibrate Add Completed Checkmarks")
-        self.manually_calibrate_scrolling_button = QPushButton("Calibrate Scroll Amounts")
+        self.calibrate_add_completed_checkmarks_button = QPushButton("Manually Calibrate Add Completed Checkmarks")
+        self.manually_calibrate_scrolling_button = QPushButton("Manually Calibrate Scroll Amounts")
         # Settings Tab
         self.ps_link_line = QLineEdit()
         self.ps_link_save_button = QPushButton("Save Private Server Link")
         self.ps_link_join_button = QPushButton("Join Private Server")
+        self.reset_add_button_template_button = QPushButton("Reset Add Button Template")
+        self.reset_amount_box_template_button = QPushButton("Reset Amount Box Template")
         # Mini Status Label 
         self.mini_status_widget = QWidget()
         self.general_mini_status_label = QLabel("Stopped")
@@ -727,6 +747,7 @@ class Dark_Sol(QMainWindow):
         self.status_signal.connect(self.inner_update_status)
         self.log_signal.connect(self.inner_log)
         self.init_ui()
+        self.setup_hotkeys()
         self.catch_up_log()
 
         if create_debug_test_buttons:
@@ -747,7 +768,7 @@ class Dark_Sol(QMainWindow):
             self.debug_tab_qv_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
             self.debug_tab.setLayout(self.debug_tab_qv_layout)
 
-            self.debug_test_button_1.clicked.connect(lambda: self.reload_potion_gui())
+            self.debug_test_button_1.clicked.connect(lambda: self.log("Test Button 1 Pressed"))
             self.debug_test_button_2.clicked.connect(lambda: self.log("Test Button 2 Pressed"))
             self.debug_test_button_3.clicked.connect(lambda: self.log("Test Button 3 Pressed"))
             self.debug_test_button_4.clicked.connect(lambda: self.log("Test Button 4 Pressed"))
@@ -875,6 +896,8 @@ class Dark_Sol(QMainWindow):
         self.ps_link_join_button
         self.ps_link_join_button.setToolTip("Must save private server before clicking")
         settings_tab_vbox.addWidget(self.ps_link_join_button)
+        settings_tab_vbox.addWidget(self.reset_add_button_template_button)
+        settings_tab_vbox.addWidget(self.reset_amount_box_template_button)
         
         # Button Connectors
         self.calibration_mode_button.clicked.connect(lambda: self.switch_calibration_mode())
@@ -913,6 +936,8 @@ class Dark_Sol(QMainWindow):
         self.ps_link_join_button.clicked.connect(lambda: self.open_roblox(config["private server link"]))
         self.set_add_button_template.clicked.connect(lambda: self.change_template("add button"))
         self.set_amount_box_template.clicked.connect(lambda: self.change_template("amount box"))
+        self.reset_add_button_template_button.clicked.connect(lambda: verify_files("add_button.png", local_appdata_directory / "Lib" / "Images"))
+        self.reset_amount_box_template_button.clicked.connect(lambda: verify_files("amount_box.png", local_appdata_directory / "Lib" / "Images"))
 
         self.preset_selector.currentTextChanged.connect(lambda: self.switch_preset(self.preset_selector.currentText()) if self.preset_selector.currentText() != "Create New Preset" else self.create_new_preset())
         self.rename_preset_button.clicked.connect(self.rename_preset)
@@ -936,7 +961,6 @@ class Dark_Sol(QMainWindow):
         self.calibrations_tab.setObjectName("calibrations_tab")
         self.setStyleSheet("""
             QMainWindow {background-color: black; }
-            QTabWidget::pane { border: 0px; padding: 0px; margin: 0px; }
             QTabBar::tab { background-color: #222; }
             QTabBar::tab:selected { background-color: black; }
             QTabBar {color: cyan;}
@@ -944,22 +968,20 @@ class Dark_Sol(QMainWindow):
             QPushButton {background-color: black; color: cyan; border-radius: 5px; border: 1px solid cyan; font-size: 15pt;}
             QPushButton#start_button {font-size: 22pt;}
             QPushButton#stop_button {font-size: 22pt;}
-            QWidget#calibrations_tab QPushButton {font-size: 22pt;}
             QLabel {color: cyan; font-size: 14pt;}
             QLabel#status_label {color: cyan; font-size: 38pt;}
         """)
         # Setup  Hotkeys
         self.start_button.clicked.connect(self.start_macro)
         self.stop_button.clicked.connect(self.stop_macro)
-        self.setup_hotkeys()
- 
+        
     def catch_up_log(self):
         for log in log_backlog:
             self.log(log)
     
     def change_template(self, template_name):
         image_location = data["calibration data"][template_name]["image path"]
-        image_path = str(local_appdata_directory / "Lib" / "Templates" / image_location)
+        image_path = str(local_appdata_directory / "Lib" / "Images" / image_location)
         if not (new_template_bbox := self.select_region()):
             return
         else:
@@ -1175,7 +1197,7 @@ class Dark_Sol(QMainWindow):
             tl_y = int(round(top_left_global.y() * scale))
             br_x = int(round(bottom_right_global.x() * scale))
             br_y = int(round(bottom_right_global.y() * scale))
-            selection_result = ((tl_x, tl_y), (br_x, br_y))
+            selection_result = (tl_x, tl_y, br_x, br_y)
             loop.quit()
 
         widget.paintEvent = paint_event  # type: ignore[method-assign]
@@ -1198,7 +1220,7 @@ class Dark_Sol(QMainWindow):
         if result == None:
             self.log(f"Manual calibration for {calibration_name} was cancelled.")
         else:
-            bbox = (result[0][0], result[0][1], result[1][0], result[1][1])
+            bbox = (result[0], result[1], result[2], result[3])
             center = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
             self.log(f"Manual calibration for {calibration_name} completed successfully.")
             if save:
@@ -1448,6 +1470,7 @@ class Dark_Sol(QMainWindow):
 
             nice_config_save()
             self.presets_tab_content.adjustSize()
+            self.presets_tab_content.updateGeometry()
 
         def potion_enabled(checked: bool):
             sender = self.sender()
@@ -1538,7 +1561,7 @@ class Dark_Sol(QMainWindow):
                 label = potion_data["button names"][btn]
                 # Fill Buttons To Check Column (Left)
                 buttons_to_check_checkbox = QCheckBox(label)
-                buttons_to_check_checkbox.setStyleSheet("""QCheckBox { color: cyan; font-size: 11pt; padding-left: 4px;}""")
+                buttons_to_check_checkbox.setStyleSheet("""QCheckBox { color: cyan; font-size: 11pt; padding-left: 4pt;}""")
                 buttons_to_check_checkbox.setChecked(btn in potion_config["buttons to check"])
                 buttons_to_check_checkbox.setProperty("potion", potion)
                 buttons_to_check_checkbox.setProperty("list_key", "buttons to check")
@@ -1547,7 +1570,7 @@ class Dark_Sol(QMainWindow):
                 left_column_QV_Layout.addWidget(buttons_to_check_checkbox)
                 # Fill Additional Buttons To Click Column (Right)
                 addition_buttons_to_click_checkbox = QCheckBox(label)
-                addition_buttons_to_click_checkbox.setStyleSheet("""QCheckBox { color: cyan; font-size: 11pt; padding-left: 4px;}""")
+                addition_buttons_to_click_checkbox.setStyleSheet("""QCheckBox { color: cyan; font-size: 11pt; padding-left: 4pt;}""")
                 addition_buttons_to_click_checkbox.setChecked(btn in potion_config["additional buttons to click"])
                 addition_buttons_to_click_checkbox.setProperty("potion", potion)
                 addition_buttons_to_click_checkbox.setProperty("list_key", "additional buttons to click")
@@ -1558,7 +1581,6 @@ class Dark_Sol(QMainWindow):
             columns_QH_Layout.addStretch(1)
             columns_QH_Layout.addWidget(right_column)
             QVLayout.addWidget(body)
-
             # Initial Visibility Setup
             collapsed = potion_config["collapsed"]
             body.setVisible(potion_config["enabled"] and not collapsed)
@@ -1930,7 +1952,7 @@ class Dark_Sol(QMainWindow):
             time.sleep(0.2)
             ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE
 
-    def hotkey_listener(self):
+    def global_hotkey_listener(self):
         def on_press(key):
             if key == keyboard.Key.f1:
                 self.start_macro_signal.emit()
@@ -1950,7 +1972,7 @@ class Dark_Sol(QMainWindow):
     def setup_hotkeys(self):
         self.start_macro_signal.connect(self.start_macro)
         self.stop_macro_signal.connect(self.stop_macro)
-        threading.Thread(target=self.hotkey_listener, daemon=True).start()
+        threading.Thread(target=self.global_hotkey_listener, daemon=True).start()
 
     def create_overlay(self, bbox=None, color=(0,255,0,255), text=None, text_color="#00FF00", font_size=10, thickness=3, disabled=False):
         overlay_windows = getattr(self, "active overlays", None)
